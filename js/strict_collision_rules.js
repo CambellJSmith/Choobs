@@ -2,8 +2,136 @@
     "use strict";
 
     const INSTALL_FLAG = "__choobs_strict_trajectory_rules_installed";
+    const PIPE_BREATH_RENDERER_FLAG =
+        "__choobs_pipe_breath_renderer_clock_installed";
+    const PIPE_BREATH_APPLICATION_FLAG =
+        "__choobs_pipe_breath_render_loop_installed";
     const COLLISION_DISTANCE = 0.5;
     const SIMULATION_STEP = 0.025;
+    const PIPE_BREATH_IDLE_MS = 5000;
+    const PIPE_BREATH_DURATION_MS = 1000;
+    const PIPE_BREATH_PERIOD_MS =
+        PIPE_BREATH_IDLE_MS + PIPE_BREATH_DURATION_MS;
+
+    function current_time() {
+        return globalThis.performance &&
+            typeof globalThis.performance.now === "function" ?
+                globalThis.performance.now() :
+                0;
+    }
+
+    function pipe_breath_is_active(elapsed) {
+        const numeric_elapsed = Math.max(0, Number(elapsed) || 0);
+        const phase = numeric_elapsed % PIPE_BREATH_PERIOD_MS;
+        return phase > PIPE_BREATH_IDLE_MS &&
+            phase < PIPE_BREATH_PERIOD_MS;
+    }
+
+    function install_pipe_breath_renderer_clock() {
+        const Renderer = globalThis.ChoobsCanvasRenderer;
+
+        if (!Renderer || !Renderer.prototype) {
+            return false;
+        }
+
+        const prototype = Renderer.prototype;
+
+        if (prototype[PIPE_BREATH_RENDERER_FLAG]) {
+            return true;
+        }
+
+        Object.defineProperty(
+            prototype,
+            PIPE_BREATH_RENDERER_FLAG,
+            { value: true }
+        );
+
+        const original_set_level = prototype.set_level;
+        const original_render = prototype.render;
+
+        prototype.set_level = function () {
+            const result = original_set_level.apply(this, arguments);
+            this.__choobs_pipe_breath_started_at = current_time();
+            this.__choobs_pipe_breath_was_active = false;
+            return result;
+        };
+
+        prototype.render = function (session, visual_state = {}) {
+            const absolute_time = Number(visual_state.time) || current_time();
+
+            if (!Number.isFinite(this.__choobs_pipe_breath_started_at)) {
+                this.__choobs_pipe_breath_started_at = absolute_time;
+            }
+
+            const epoch = this.__choobs_pipe_breath_started_at;
+            const relative_time = Math.max(0.001, absolute_time - epoch);
+            const shifted_state = {
+                ...visual_state,
+                time: relative_time
+            };
+            const intro_started = Number(visual_state.intro_started);
+
+            if (Number.isFinite(intro_started) && intro_started > 0) {
+                shifted_state.intro_started = Math.max(
+                    0.001,
+                    intro_started - epoch
+                );
+            }
+
+            if (Array.isArray(visual_state.effects)) {
+                shifted_state.effects = visual_state.effects.map((effect) => {
+                    const started = Number(effect && effect.started);
+
+                    if (!effect || typeof effect !== "object" ||
+                        !Number.isFinite(started)) {
+                        return effect;
+                    }
+
+                    return {
+                        ...effect,
+                        started: started - epoch
+                    };
+                });
+            }
+
+            return original_render.call(this, session, shifted_state);
+        };
+
+        return true;
+    }
+
+    function install_pipe_breath_render_loop(application) {
+        if (!application || application[PIPE_BREATH_APPLICATION_FLAG]) {
+            return Boolean(application);
+        }
+
+        application[PIPE_BREATH_APPLICATION_FLAG] = true;
+        const original_frame = application.frame.bind(application);
+
+        application.frame = function (time) {
+            const renderer = this.renderer;
+            const epoch = Number(
+                renderer && renderer.__choobs_pipe_breath_started_at
+            );
+
+            if (Number.isFinite(epoch)) {
+                const active = pipe_breath_is_active(time - epoch);
+                const was_active = Boolean(
+                    renderer.__choobs_pipe_breath_was_active
+                );
+
+                if (active || was_active) {
+                    this.needs_render = true;
+                }
+
+                renderer.__choobs_pipe_breath_was_active = active;
+            }
+
+            return original_frame(time);
+        };
+
+        return true;
+    }
 
     function point_distance_squared(left, right) {
         const difference_x = left.x - right.x;
@@ -231,10 +359,15 @@
         return true;
     }
 
+    install_pipe_breath_renderer_clock();
+
     if (!install_strict_trajectory_rules()) {
         let attempts = 0;
         const wait_for_engine = () => {
-            if (install_strict_trajectory_rules()) {
+            const rules_ready = install_strict_trajectory_rules();
+            const renderer_ready = install_pipe_breath_renderer_clock();
+
+            if (rules_ready && renderer_ready) {
                 return;
             }
 
@@ -246,5 +379,22 @@
         };
 
         globalThis.setTimeout(wait_for_engine, 0);
+    }
+
+    if (typeof globalThis.setTimeout === "function") {
+        let game_attempts = 0;
+        const wait_for_game = () => {
+            if (install_pipe_breath_render_loop(globalThis.choobsGame)) {
+                return;
+            }
+
+            game_attempts += 1;
+
+            if (game_attempts < 240) {
+                globalThis.setTimeout(wait_for_game, 25);
+            }
+        };
+
+        globalThis.setTimeout(wait_for_game, 0);
     }
 })();
