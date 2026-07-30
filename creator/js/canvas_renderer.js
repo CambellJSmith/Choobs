@@ -408,15 +408,15 @@
             const palette = this.level.palette || Choobs.PIPE_COLORS;
             const pipe_color = palette[pipe.color_index % palette.length];
             const base_pipe_color = blocked ?
-                    "#ff7d8f" :
-                    hinted ?
-                        "#7ee3c5" :
-                        pipe_color;
-                const breath_amount = get_pipe_breath_amount(time);
-                const rendered_pipe_color = breathe_pipe_color(
-                    base_pipe_color,
-                    breath_amount
-                );
+                "#ff7d8f" :
+                hinted ?
+                    "#7ee3c5" :
+                    pipe_color;
+            const breath_amount = get_pipe_breath_amount(time);
+            const rendered_pipe_color = breathe_pipe_color(
+                base_pipe_color,
+                breath_amount
+            );
             const intro_alpha = this.get_intro_alpha(
                 pipe.id,
                 time,
