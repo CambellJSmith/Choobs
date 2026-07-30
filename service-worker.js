@@ -12,6 +12,9 @@ const BUILD_VERSION = "{{ build_version }}";
 const CACHE_PREFIX = "choobs-pwa-";
 const STATIC_CACHE = `${CACHE_PREFIX}static-${BUILD_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${BUILD_VERSION}`;
+const NAVIGATION_TIMEOUT_MS = 3500;
+const RESOURCE_TIMEOUT_MS = 2500;
+const SETUP_FETCH_TIMEOUT_MS = 20000;
 
 const APP_SHELL = [
     "./",
@@ -54,9 +57,7 @@ const LEVEL_ASSETS = [
 const PRECACHE_ASSETS = [...APP_SHELL, ...LEVEL_ASSETS];
 
 self.addEventListener("install", (event) => {
-    event.waitUntil(
-        caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_ASSETS))
-    );
+    event.waitUntil(install_offline_cache());
 });
 
 self.addEventListener("activate", (event) => {
@@ -71,7 +72,7 @@ self.addEventListener("activate", (event) => {
         );
 
         if (self.registration.navigationPreload) {
-            await self.registration.navigationPreload.enable();
+            await self.registration.navigationPreload.disable();
         }
 
         await self.clients.claim();
@@ -122,23 +123,64 @@ self.addEventListener("fetch", (event) => {
     }
 
     if (request.mode === "navigate") {
-        event.respondWith(handle_navigation(event));
+        event.respondWith(handle_navigation(request));
         return;
     }
 
     if (url.pathname.endsWith(".json")) {
-        event.respondWith(network_first(request));
+        event.respondWith(cache_first_with_refresh(request));
         return;
     }
 
     event.respondWith(cache_first_with_refresh(request));
 });
 
+async function install_offline_cache() {
+    const cache = await caches.open(STATIC_CACHE);
+
+    // The application shell is required. If one of these files is unavailable,
+    // the worker should not activate with an incomplete offline application.
+    await cache.addAll(APP_SHELL);
+
+    // Individual level files are optional at install time. One temporary level
+    // failure must not prevent the already complete application shell from
+    // becoming available offline.
+    await cache_optional_assets(cache, LEVEL_ASSETS);
+}
+
+async function cache_optional_assets(cache, assets) {
+    const batch_size = 8;
+
+    for (let index = 0; index < assets.length; index += batch_size) {
+        const batch = assets.slice(index, index + batch_size);
+
+        await Promise.allSettled(
+            batch.map(async (asset) => {
+                const response = await fetch_with_timeout(
+                    asset,
+                    SETUP_FETCH_TIMEOUT_MS,
+                    { cache: "reload" }
+                );
+
+                if (!response || !response.ok) {
+                    throw new Error(`Could not cache optional asset ${asset}.`);
+                }
+
+                await cache.put(asset, response);
+            })
+        );
+    }
+}
+
 async function refresh_all_offline_files() {
     const cache = await caches.open(STATIC_CACHE);
 
     for (const asset of PRECACHE_ASSETS) {
-        const response = await fetch(asset, { cache: "reload" });
+        const response = await fetch_with_timeout(
+            asset,
+            SETUP_FETCH_TIMEOUT_MS,
+            { cache: "reload" }
+        );
 
         if (!response || !response.ok) {
             throw new Error(`Could not save ${asset} for offline use.`);
@@ -147,63 +189,66 @@ async function refresh_all_offline_files() {
         await cache.put(asset, response);
     }
 
+    const missing_assets = [];
+
+    for (const asset of PRECACHE_ASSETS) {
+        if (!await cache.match(asset)) {
+            missing_assets.push(asset);
+        }
+    }
+
+    if (missing_assets.length > 0) {
+        throw new Error(
+            `${missing_assets.length} offline file${
+                missing_assets.length === 1 ? " is" : "s are"
+            } still missing.`
+        );
+    }
+
     return PRECACHE_ASSETS.length;
 }
 
-async function handle_navigation(event) {
-    const request = event.request;
+async function handle_navigation(request) {
+    const cached = await get_cached_navigation(request);
 
-    try {
-        const preload = await event.preloadResponse;
-        const response = preload || await fetch(request);
-
-        if (response && response.ok) {
-            const cache = await caches.open(RUNTIME_CACHE);
-            cache.put(request, response.clone()).catch(() => {});
-        }
-
-        return response;
-    } catch (error) {
-        const exact_match = await caches.match(request);
-
-        if (exact_match) {
-            return exact_match;
-        }
-
-        return caches.match("./index.html", { cacheName: STATIC_CACHE });
+    if (cached) {
+        refresh_in_background(request, NAVIGATION_TIMEOUT_MS);
+        return cached;
     }
+
+    return fetch_and_store(request, NAVIGATION_TIMEOUT_MS);
 }
 
-async function network_first(request) {
-    try {
-        const response = await fetch(request);
+async function get_cached_navigation(request) {
+    const exact_match = await caches.match(request, { ignoreSearch: true });
 
-        if (response && response.ok) {
-            const cache = await caches.open(RUNTIME_CACHE);
-            await cache.put(request, response.clone());
-        }
-
-        return response;
-    } catch (error) {
-        const cached = await caches.match(request);
-
-        if (cached) {
-            return cached;
-        }
-
-        throw error;
+    if (exact_match) {
+        return exact_match;
     }
+
+    const cache = await caches.open(STATIC_CACHE);
+    const url = new URL(request.url);
+    const creator_path = new URL("./creator/", self.registration.scope).pathname;
+    const fallback = url.pathname.startsWith(creator_path) ?
+        "./creator/index.html" :
+        "./index.html";
+
+    return cache.match(fallback);
 }
 
 async function cache_first_with_refresh(request) {
     const cached = await caches.match(request);
 
     if (cached) {
-        refresh_in_background(request);
+        refresh_in_background(request, RESOURCE_TIMEOUT_MS);
         return cached;
     }
 
-    const response = await fetch(request);
+    return fetch_and_store(request, RESOURCE_TIMEOUT_MS);
+}
+
+async function fetch_and_store(request, timeout_ms) {
+    const response = await fetch_with_timeout(request, timeout_ms);
 
     if (response && response.ok) {
         const cache = await caches.open(RUNTIME_CACHE);
@@ -213,13 +258,50 @@ async function cache_first_with_refresh(request) {
     return response;
 }
 
-function refresh_in_background(request) {
-    fetch(request).then(async (response) => {
-        if (!response || !response.ok) {
-            return;
+function refresh_in_background(request, timeout_ms) {
+    fetch_with_timeout(request, timeout_ms)
+        .then(async (response) => {
+            if (!response || !response.ok) {
+                return;
+            }
+
+            const cache = await caches.open(RUNTIME_CACHE);
+            await cache.put(request, response);
+        })
+        .catch(() => {});
+}
+
+async function fetch_with_timeout(request, timeout_ms, options = {}) {
+    if (self.navigator && self.navigator.onLine === false) {
+        throw new TypeError("The device is offline.");
+    }
+
+    if (typeof AbortController === "undefined") {
+        return Promise.race([
+            fetch(request, options),
+            new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new TypeError("The network request timed out."));
+                }, timeout_ms);
+            })
+        ]);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeout_ms);
+
+    try {
+        return await fetch(request, {
+            ...options,
+            signal: controller.signal
+        });
+    } catch (error) {
+        if (error && error.name === "AbortError") {
+            throw new TypeError("The network request timed out.");
         }
 
-        const cache = await caches.open(RUNTIME_CACHE);
-        await cache.put(request, response);
-    }).catch(() => {});
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
 }
