@@ -1,0 +1,45 @@
+name: Apply pipe-only renderer
+
+on:
+  push:
+    branches:
+      - agent/pipe-only-board
+    paths:
+      - .github/workflows/apply-pipe-only-renderer.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/pipe-only-board
+
+      - name: Load pipe-only renderer before the game
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("index.html")
+          content = path.read_text(encoding="utf-8")
+          old = '    <script src="js/canvas_renderer.js"></script>\n    <script src="js/game.js"></script>'
+          new = '    <script src="js/canvas_renderer.js"></script>\n    <script src="js/pipe_only_renderer.js"></script>\n    <script src="js/game.js"></script>'
+
+          if old not in content:
+              raise SystemExit("Expected renderer script order was not found.")
+
+          path.write_text(content.replace(old, new, 1), encoding="utf-8")
+          PY
+
+          rm .github/workflows/apply-pipe-only-renderer.yml
+
+      - name: Commit generated edit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/apply-pipe-only-renderer.yml
+          git commit -m "Load pipe-only game renderer"
+          git push
