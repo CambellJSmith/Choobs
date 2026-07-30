@@ -1,0 +1,213 @@
+from pathlib import Path
+
+path = Path("js/game.js")
+text = path.read_text()
+
+old = """            this.manual_file_checks = new Map();
+            this.load_request_id = 0;"""
+new = """            this.manual_file_checks = new Map();
+            this.level_name_cache = this.load_level_name_cache();
+            this.load_request_id = 0;"""
+if old not in text:
+    raise RuntimeError("constructor insertion point not found")
+text = text.replace(old, new, 1)
+
+old = """            await this.load_level_number(target_number);
+        }
+
+        get_resume_level_number() {"""
+new = """            const name_prefetch = this.preload_level_names(target_number);
+            await this.load_level_number(target_number);
+            void name_prefetch;
+        }
+
+        get_resume_level_number() {"""
+if old not in text:
+    raise RuntimeError("load-level prefetch insertion point not found")
+text = text.replace(old, new, 1)
+
+old = """            return {
+                number: level_number,
+                name: `Level ${level_number}`,
+                procedural_placeholder: true
+            };
+        }
+
+        rebuild_level_entries(frontier) {"""
+new = """            return {
+                number: level_number,
+                name: this.level_name_cache.get(level_number) ||
+                    `Level ${level_number}`,
+                procedural_placeholder: true
+            };
+        }
+
+        rebuild_level_entries(frontier) {"""
+if old not in text:
+    raise RuntimeError("placeholder cache insertion point not found")
+text = text.replace(old, new, 1)
+
+old = """                this.manual_levels.set(level_number, level);
+                return level;"""
+new = """                this.manual_levels.set(level_number, level);
+                this.remember_level_name(level);
+                return level;"""
+if old not in text:
+    raise RuntimeError("manual-level cache insertion point not found")
+text = text.replace(old, new, 1)
+
+marker = """        async resolve_level(index) {"""
+methods = """        async preload_level_names(preferred_number = null) {
+            const preferred = Math.max(
+                1,
+                Math.floor(Number(preferred_number) || 1)
+            );
+            const candidates = this.levels
+                .filter((entry) => {
+                    return entry && entry.procedural_placeholder &&
+                        this.is_level_number_unlocked(entry.number) &&
+                        !this.level_name_cache.has(entry.number);
+                })
+                .map((entry) => entry.number);
+            const preferred_index = candidates.indexOf(preferred);
+
+            if (preferred_index > 0) {
+                candidates.splice(preferred_index, 1);
+                candidates.unshift(preferred);
+            }
+
+            if (candidates.length === 0) {
+                return;
+            }
+
+            let next_candidate = 0;
+            const worker = async () => {
+                while (next_candidate < candidates.length) {
+                    const level_number = candidates[next_candidate];
+                    next_candidate += 1;
+                    const level = await this.try_load_manual_level_file(
+                        level_number
+                    );
+
+                    if (!level) {
+                        continue;
+                    }
+
+                    const index = level_number - 1;
+
+                    if (this.levels[index] &&
+                        this.levels[index].number === level_number) {
+                        this.levels[index] = level;
+                    }
+
+                    this.populate_level_select();
+                }
+            };
+            const worker_count = Math.min(4, candidates.length);
+
+            await Promise.all(
+                Array.from({ length: worker_count }, () => worker())
+            );
+        }
+
+"""
+if marker not in text:
+    raise RuntimeError("preload method insertion point not found")
+text = text.replace(marker, methods + marker, 1)
+
+old = """        get_level_option_label(level) {
+            if (level.procedural_placeholder ||
+                level.settings && level.settings.procedural) {
+                return `Level ${level.number}`;
+            }
+
+            return `${level.number}. ${level.name}`;
+        }"""
+new = """        get_level_option_label(level) {
+            if (level.procedural_placeholder) {
+                const cached_name = this.level_name_cache.get(level.number);
+                return cached_name ?
+                    `${level.number}. ${cached_name}` :
+                    `Level ${level.number}`;
+            }
+
+            if (level.settings && level.settings.procedural) {
+                return `Level ${level.number}`;
+            }
+
+            return `${level.number}. ${level.name}`;
+        }"""
+if old not in text:
+    raise RuntimeError("option-label method not found")
+text = text.replace(old, new, 1)
+
+marker = """        load_imported_levels() {"""
+methods = """        load_level_name_cache() {
+            try {
+                const raw = JSON.parse(
+                    localStorage.getItem("choobs_level_name_cache_v1") || "{}"
+                );
+                const cache = new Map();
+
+                if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+                    return cache;
+                }
+
+                for (const [number_text, name_value] of Object.entries(raw)) {
+                    const level_number = Number(number_text);
+                    const level_name = String(name_value || "").trim();
+
+                    if (Number.isInteger(level_number) && level_number >= 1 &&
+                        level_name && level_name !== `Level ${level_number}`) {
+                        cache.set(level_number, level_name);
+                    }
+                }
+
+                return cache;
+            } catch (error) {
+                console.warn("Cached level names could not be loaded.", error);
+                return new Map();
+            }
+        }
+
+        save_level_name_cache() {
+            try {
+                localStorage.setItem(
+                    "choobs_level_name_cache_v1",
+                    JSON.stringify(Object.fromEntries(this.level_name_cache))
+                );
+            } catch (error) {
+                console.warn("Level names could not be cached.", error);
+            }
+        }
+
+        remember_level_name(level) {
+            const level_number = Math.floor(Number(level && level.number) || 0);
+            const level_name = String(level && level.name || "").trim();
+
+            if (level_number < 1 || !level_name) {
+                return;
+            }
+
+            if (level_name === `Level ${level_number}`) {
+                if (this.level_name_cache.delete(level_number)) {
+                    this.save_level_name_cache();
+                }
+
+                return;
+            }
+
+            if (this.level_name_cache.get(level_number) === level_name) {
+                return;
+            }
+
+            this.level_name_cache.set(level_number, level_name);
+            this.save_level_name_cache();
+        }
+
+"""
+if marker not in text:
+    raise RuntimeError("cache method insertion point not found")
+text = text.replace(marker, methods + marker, 1)
+
+path.write_text(text)
