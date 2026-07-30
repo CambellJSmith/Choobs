@@ -445,8 +445,14 @@
             const side_y = pipe.direction.x;
             const palette = this.level.palette || Choobs.PIPE_COLORS;
             const pipe_color = palette[pipe.color_index % palette.length];
+            const rendered_pipe_color = blocked ?
+                "#ff7d8f" :
+                hinted ?
+                    "#7ee3c5" :
+                    pipe_color;
             const needs_light_outline =
-                !blocked && pipe_color_needs_light_outline(pipe_color);
+                !blocked && !hinted &&
+                pipe_color_needs_light_outline(pipe_color);
             const intro_alpha = this.get_intro_alpha(
                 pipe.id,
                 time,
@@ -485,68 +491,52 @@
                 context.shadowBlur = cell_size * 0.3;
             }
 
-            this.stroke_polyline(
+            const arrow_tip = this.stroke_pipe_shape(
                 context,
                 points,
+                pipe.direction,
+                cell_size,
                 "#080a0e",
                 outer_width
             );
 
             if (needs_light_outline) {
                 const light_outline_width = Math.min(
-
                     outer_width - Math.max(1, cell_size * 0.04),
-
                     inner_width + Math.max(1.5, cell_size * 0.1)
-
                 );
-                this.stroke_polyline(
+                this.stroke_pipe_shape(
                     context,
                     points,
+                    pipe.direction,
+                    cell_size,
                     "#ffffff",
                     light_outline_width
                 );
             }
 
-            this.stroke_polyline(
+            this.stroke_pipe_shape(
                 context,
                 points,
-                blocked ? "#ff7d8f" : pipe_color,
+                pipe.direction,
+                cell_size,
+                rendered_pipe_color,
                 inner_width
             );
 
             if (moving && cell_size >= 5) {
                 context.save();
                 context.globalAlpha = 0.22;
-                this.stroke_polyline(
+                this.stroke_pipe_shape(
                     context,
                     points,
+                    pipe.direction,
+                    cell_size,
                     "#ffffff",
                     Math.max(0.75, inner_width * 0.18)
                 );
                 context.restore();
             }
-
-            const arrow_colors = {
-                outer: needs_light_outline && !hinted ?
-                    "#ffffff" :
-                    "#080a0e",
-                inner: blocked ?
-                    "#ff7d8f" :
-                    hinted ?
-                        "#7ee3c5" :
-                        pipe_color
-            };
-            const arrow_tip = this.draw_arrow(
-                context,
-                points[points.length - 1],
-                pipe.direction,
-                arrow_colors.outer,
-                arrow_colors.inner,
-                outer_width,
-                inner_width,
-                cell_size
-            );
 
             if (moving) {
                 this.draw_motion_tip(
@@ -836,16 +826,7 @@
             context.stroke();
         }
 
-        draw_arrow(
-            context,
-            center,
-            direction,
-            outer_color,
-            inner_color,
-            outer_width,
-            inner_width,
-            cell_size
-        ) {
+        get_pipe_arrow_geometry(center, direction, cell_size) {
             const forward_x = direction.x;
             const forward_y = direction.y;
             const side_x = -forward_y;
@@ -873,21 +854,49 @@
                     tip.y - forward_y * wing_length -
                     side_y * wing_spread
             };
-            const draw_structure = (color, width) => {
-                context.beginPath();
-                context.moveTo(center.x, center.y);
-                context.lineTo(tip.x, tip.y);
-                context.moveTo(tip.x, tip.y);
-                context.lineTo(left_wing.x, left_wing.y);
-                context.moveTo(tip.x, tip.y);
-                context.lineTo(right_wing.x, right_wing.y);
-                context.strokeStyle = color;
-                context.lineWidth = width;
-                context.stroke();
-            };
 
-            draw_structure(outer_color, outer_width * 0.72);
-            draw_structure(inner_color, inner_width * 0.64);
+            return { tip, left_wing, right_wing };
+        }
+
+        trace_pipe_shape(context, points, direction, cell_size) {
+            const geometry = this.get_pipe_arrow_geometry(
+                points[points.length - 1],
+                direction,
+                cell_size
+            );
+
+            context.beginPath();
+            context.moveTo(points[0].x, points[0].y);
+
+            for (let index = 1; index < points.length; index += 1) {
+                context.lineTo(points[index].x, points[index].y);
+            }
+
+            context.lineTo(geometry.tip.x, geometry.tip.y);
+            context.moveTo(geometry.tip.x, geometry.tip.y);
+            context.lineTo(geometry.left_wing.x, geometry.left_wing.y);
+            context.moveTo(geometry.tip.x, geometry.tip.y);
+            context.lineTo(geometry.right_wing.x, geometry.right_wing.y);
+            return geometry.tip;
+        }
+
+        stroke_pipe_shape(
+            context,
+            points,
+            direction,
+            cell_size,
+            color,
+            width
+        ) {
+            const tip = this.trace_pipe_shape(
+                context,
+                points,
+                direction,
+                cell_size
+            );
+            context.strokeStyle = color;
+            context.lineWidth = width;
+            context.stroke();
             return tip;
         }
     }
