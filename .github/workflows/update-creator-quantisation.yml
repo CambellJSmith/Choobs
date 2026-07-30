@@ -1,0 +1,137 @@
+name: Update creator quantisation
+
+on:
+  push:
+    branches:
+      - agent/unlimited-quantization-controls
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/unlimited-quantization-controls
+
+      - name: Apply updates
+        shell: bash
+        run: |
+          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQganNvbgoKZGVmIHJlcGxhY2Vfb25jZSh0ZXh0LCBvbGQsIG5ldywgbGFiZWwpOgogICAgY291bnQgPSB0ZXh0LmNvdW50KG9sZCkKICAgIGlmIGNvdW50ICE9IDE6CiAgICAgICAgcmFpc2UgUnVudGltZUVycm9yKGYie2xhYmVsfTogZXhwZWN0ZWQgMSBtYXRjaCwgZm91bmQge2NvdW50fSIpCiAgICByZXR1cm4gdGV4dC5yZXBsYWNlKG9sZCwgbmV3KQoKZGVmIHBhdGNoX2VuZ2luZSh0ZXh0LCBsYWJlbCk6CiAgICB0ZXh0ID0gcmVwbGFjZV9vbmNlKAogICAgICAgIHRleHQsCiAgICAgICAgJycnICAgIGNvbnN0IFBJUEVfQ09MT1JTID0gT2JqZWN0LmZyZWV6ZShbCiAgICAgICAgIiNmZjVjN2EiLCAiI2ZmZDE2NiIsICIjNGRkNmE4IiwgIiM1YjlkZmYiLCAiI2I5ODNmZiIKICAgIF0pOwoKCiAgICBmdW5jdGlvbiBub3JtYWxpemVfcGFsZXR0ZShyYXdfcGFsZXR0ZSkgeycnJywKICAgICAgICAnJycgICAgY29uc3QgUElQRV9DT0xPUlMgPSBPYmplY3QuZnJlZXplKFsKICAgICAgICAiI2ZmNWM3YSIsICIjZmZkMTY2IiwgIiM0ZGQ2YTgiLCAiIzViOWRmZiIsICIjYjk4M2ZmIgogICAgXSk7CiAgICBjb25zdCBNQVhfUEFMRVRURV9TSVpFID0gMjUwMDsKICAgIGNvbnN0IEVNUFRZX0NPTE9SX0lOREVYID0gNjU1MzU7CgoKICAgIGZ1bmN0aW9uIG5vcm1hbGl6ZV9wYWxldHRlKHJhd19wYWxldHRlKSB7JycnLAogICAgICAgIGYie2xhYmVsfSBjb25zdGFudHMiCiAgICApCiAgICB0ZXh0ID0gcmVwbGFjZV9vbmNlKAogICAgICAgIHRleHQsCiAgICAgICAgJycnICAgICAgICAgICAgaWYgKHBhbGV0dGUubGVuZ3RoID09PSA1KSB7CiAgICAgICAgICAgICAgICBicmVhazsKICAgICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgaWYgKHBhbGV0dGUubGVuZ3RoID09PSAwKSB7CiAgICAgICAgICAgIHJldHVybiBBcnJheS5mcm9tKFBJUEVfQ09MT1JTKTsKICAgICAgICB9CgogICAgICAgIHJldHVybiBwYWxldHRlLnNsaWNlKDAsIDUpOycnJywKICAgICAgICAnJycgICAgICAgICAgICBpZiAocGFsZXR0ZS5sZW5ndGggPj0gTUFYX1BBTEVUVEVfU0laRSkgewogICAgICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIGlmIChwYWxldHRlLmxlbmd0aCA9PT0gMCkgewogICAgICAgICAgICByZXR1cm4gQXJyYXkuZnJvbShQSVBFX0NPTE9SUyk7CiAgICAgICAgfQoKICAgICAgICByZXR1cm4gcGFsZXR0ZTsnJycsCiAgICAgICAgZiJ7bGFiZWx9IHBhbGV0dGUgY2FwIgogICAgKQogICAgcGFpcnMgPSBbCiAgICAgICAgKCJjb2xvcl9tYXBbZ3JpZC5pbmRleChwaXBlLmNlbGxzWzBdLngsIHBpcGUuY2VsbHNbMF0ueSldICUgNSIsCiAgICAgICAgICJOdW1iZXIoY29sb3JfbWFwW2dyaWQuaW5kZXgocGlwZS5jZWxsc1swXS54LCBwaXBlLmNlbGxzWzBdLnkpXSkiKSwKICAgICAgICAoImNvbG9yX21hcFtncmlkLmluZGV4KGNlbGwueCwgY2VsbC55KV0gJSA1IiwKICAgICAgICAgIk51bWJlcihjb2xvcl9tYXBbZ3JpZC5pbmRleChjZWxsLngsIGNlbGwueSldKSIpLAogICAgICAgICgiY29sb3JfbWFwID8gY29sb3JfbWFwW2xlZnQuaW5kZXhdICUgNSA6IDAiLAogICAgICAgICAiY29sb3JfbWFwID8gTnVtYmVyKGNvbG9yX21hcFtsZWZ0LmluZGV4XSkgOiAwIiksCiAgICAgICAgKCJjb2xvcl9tYXAgPyBjb2xvcl9tYXBbcmlnaHQuaW5kZXhdICUgNSA6IDAiLAogICAgICAgICAiY29sb3JfbWFwID8gTnVtYmVyKGNvbG9yX21hcFtyaWdodC5pbmRleF0pIDogMCIpLAogICAgICAgICgiKCFjb2xvcl9tYXAgfHwgY29sb3JfbWFwW25pXSAlIDUgPT09IGNvbG9yKSIsCiAgICAgICAgICIoIWNvbG9yX21hcCB8fCBOdW1iZXIoY29sb3JfbWFwW25pXSkgPT09IGNvbG9yKSIpLAogICAgICAgICgiY29sb3JfbWFwID8gY29sb3JfbWFwW2Zyb250aWVyLmluZGV4XSAlIDUgOiBwaXBlcy5sZW5ndGggJSA1IiwKICAgICAgICAgImNvbG9yX21hcCA/IE51bWJlcihjb2xvcl9tYXBbZnJvbnRpZXIuaW5kZXhdKSA6IHBpcGVzLmxlbmd0aCAlIFBJUEVfQ09MT1JTLmxlbmd0aCIpLAogICAgICAgICgiKCFjb2xvcl9tYXAgfHwgY29sb3JfbWFwW2lud2FyZF9pbmRleF0gJSA1ID09PSBwaXBlX2NvbG9yKSIsCiAgICAgICAgICIoIWNvbG9yX21hcCB8fCBOdW1iZXIoY29sb3JfbWFwW2lud2FyZF9pbmRleF0pID09PSBwaXBlX2NvbG9yKSIpLAogICAgICAgICgiaWYgKGNvbG9yX21hcCAmJiBjb2xvcl9tYXBbbmV4dF0gJSA1ICE9PSBwaXBlX2NvbG9yKSBjb250aW51ZTsiLAogICAgICAgICAiaWYgKGNvbG9yX21hcCAmJiBOdW1iZXIoY29sb3JfbWFwW25leHRdKSAhPT0gcGlwZV9jb2xvcikgY29udGludWU7IiksCiAgICAgICAgKCIoIWNvbG9yX21hcCB8fCBjb2xvcl9tYXBbb2ldICUgNSA9PT0gcGlwZV9jb2xvcikiLAogICAgICAgICAiKCFjb2xvcl9tYXAgfHwgTnVtYmVyKGNvbG9yX21hcFtvaV0pID09PSBwaXBlX2NvbG9yKSIpCiAgICBdCiAgICBmb3IgaW5kZXgsIChvbGQsIG5ldykgaW4gZW51bWVyYXRlKHBhaXJzKToKICAgICAgICB0ZXh0ID0gcmVwbGFjZV9vbmNlKHRleHQsIG9sZCwgbmV3LCBmIntsYWJlbH0gY29sb3VyIG9wZXJhdGlvbiB7aW5kZXh9IikKICAgIHRleHQgPSByZXBsYWNlX29uY2UoCiAgICAgICAgdGV4dCwKICAgICAgICAnJycgICAgICAgIGNvbnN0IHJhd19tYXNrID0gVWludDhBcnJheS5mcm9tKG9wdGlvbnMubWFzayB8fCBbXSk7CiAgICAgICAgY29uc3QgcmF3X2NvbG9yX21hcCA9IFVpbnQ4QXJyYXkuZnJvbShvcHRpb25zLmNvbG9yX21hcCB8fCBbXSk7CiAgICAgICAgY29uc3QgcmVwb3J0X3Byb2dyZXNzID0nJycsCiAgICAgICAgJycnICAgICAgICBjb25zdCByYXdfbWFzayA9IFVpbnQ4QXJyYXkuZnJvbShvcHRpb25zLm1hc2sgfHwgW10pOwogICAgICAgIGNvbnN0IHJhd19jb2xvcl9tYXAgPSBVaW50MTZBcnJheS5mcm9tKG9wdGlvbnMuY29sb3JfbWFwIHx8IFtdKTsKICAgICAgICBjb25zdCBwYWxldHRlID0gbm9ybWFsaXplX3BhbGV0dGUob3B0aW9ucy5wYWxldHRlKTsKICAgICAgICBjb25zdCByZXBvcnRfcHJvZ3Jlc3MgPScnJywKICAgICAgICBmIntsYWJlbH0gY29sb3VyIG1hcCBpbnB1dCIKICAgICkKICAgIHRleHQgPSByZXBsYWNlX29uY2UoCiAgICAgICAgdGV4dCwKICAgICAgICAnJycgICAgICAgIGNvbnN0IGNvbG9yX21hcCA9IHJhd19jb2xvcl9tYXAubGVuZ3RoID09PSBjb2x1bW5zICogcm93cyA/CiAgICAgICAgICAgIFVpbnQ4QXJyYXkuZnJvbShyYXdfY29sb3JfbWFwLCAodmFsdWUsIGluZGV4KSA9PgogICAgICAgICAgICAgICAgcmF3X21hc2tbaW5kZXhdID8gTWF0aC5tYXgoMCwgTWF0aC5taW4oNCwgTnVtYmVyKHZhbHVlKSB8fCAwKSkgOiAyNTUKICAgICAgICAgICAgKSA6IG51bGw7JycnLAogICAgICAgICcnJyAgICAgICAgY29uc3QgY29sb3JfbWFwID0gcmF3X2NvbG9yX21hcC5sZW5ndGggPT09IGNvbHVtbnMgKiByb3dzID8KICAgICAgICAgICAgVWludDE2QXJyYXkuZnJvbShyYXdfY29sb3JfbWFwLCAodmFsdWUsIGluZGV4KSA9PgogICAgICAgICAgICAgICAgcmF3X21hc2tbaW5kZXhdID8KICAgICAgICAgICAgICAgICAgICBNYXRoLm1heCgwLCBNYXRoLm1pbihwYWxldHRlLmxlbmd0aCAtIDEsIE51bWJlcih2YWx1ZSkgfHwgMCkpIDoKICAgICAgICAgICAgICAgICAgICBFTVBUWV9DT0xPUl9JTkRFWAogICAgICAgICAgICApIDogbnVsbDsnJycsCiAgICAgICAgZiJ7bGFiZWx9IGNvbG91ciBtYXAgbm9ybWFsaXphdGlvbiIKICAgICkKICAgIHRleHQgPSByZXBsYWNlX29uY2UoCiAgICAgICAgdGV4dCwKICAgICAgICAiICAgICAgICAgICAgICAgIHBhbGV0dGU6IG5vcm1hbGl6ZV9wYWxldHRlKG9wdGlvbnMucGFsZXR0ZSksIiwKICAgICAgICAiICAgICAgICAgICAgICAgIHBhbGV0dGUsIiwKICAgICAgICBmIntsYWJlbH0gZ2VuZXJhdGVkIHBhbGV0dGUiCiAgICApCiAgICB0ZXh0ID0gcmVwbGFjZV9vbmNlKAogICAgICAgIHRleHQsCiAgICAgICAgIiAgICAgICAgICAgICAgICAgICAgcGFsZXR0ZV9zaXplOiBub3JtYWxpemVfcGFsZXR0ZShvcHRpb25zLnBhbGV0dGUpLmxlbmd0aCwiLAogICAgICAgICIgICAgICAgICAgICAgICAgICAgIHBhbGV0dGVfc2l6ZTogcGFsZXR0ZS5sZW5ndGgsIiwKICAgICAgICBmIntsYWJlbH0gcGFsZXR0ZSBzaXplIgogICAgKQogICAgaWYgIiUgNSIgaW4gdGV4dDoKICAgICAgICByYWlzZSBSdW50aW1lRXJyb3IoZiJ7bGFiZWx9OiBhIGZpdmUtY29sb3VyIG1vZHVsbyByZW1haW5zIikKICAgIHJldHVybiB0ZXh0Cgpmb3IgcGF0aF9zdHJpbmcgaW4gWyJqcy9lbmdpbmUuanMiLCAiY3JlYXRvci9qcy9lbmdpbmUuanMiXToKICAgIHBhdGggPSBQYXRoKHBhdGhfc3RyaW5nKQogICAgcGF0aC53cml0ZV90ZXh0KHBhdGNoX2VuZ2luZShwYXRoLnJlYWRfdGV4dCgpLCBwYXRoX3N0cmluZykpCgp3b3JrZXJfcGF0aCA9IFBhdGgoImNyZWF0b3IvanMvZ2VuZXJhdGlvbl93b3JrZXJfc291cmNlLmpzIikKYXNzaWdubWVudCA9IHdvcmtlcl9wYXRoLnJlYWRfdGV4dCgpLnN0cmlwKCkKcHJlZml4ID0gImdsb2JhbFRoaXMuQ2hvb2JzR2VuZXJhdGlvbldvcmtlclNvdXJjZSA9ICIKaWYgbm90IGFzc2lnbm1lbnQuc3RhcnRzd2l0aChwcmVmaXgpIG9yIG5vdCBhc3NpZ25tZW50LmVuZHN3aXRoKCI7Iik6CiAgICByYWlzZSBSdW50aW1lRXJyb3IoIlVuZXhwZWN0ZWQgd29ya2VyIHdyYXBwZXIiKQp3b3JrZXJfc291cmNlID0ganNvbi5sb2Fkcyhhc3NpZ25tZW50W2xlbihwcmVmaXgpOi0xXSkKd29ya2VyX3BhdGgud3JpdGVfdGV4dCgKICAgIHByZWZpeCArCiAgICBqc29uLmR1bXBzKAogICAgICAgIHBhdGNoX2VuZ2luZSh3b3JrZXJfc291cmNlLCBzdHIod29ya2VyX3BhdGgpKSwKICAgICAgICBlbnN1cmVfYXNjaWk9RmFsc2UKICAgICkgKwogICAgIjtcbiIKKQoKY3JlYXRvcl9wYXRoID0gUGF0aCgiY3JlYXRvci9qcy9jcmVhdG9yLmpzIikKY3JlYXRvciA9IGNyZWF0b3JfcGF0aC5yZWFkX3RleHQoKQpjcmVhdG9yID0gcmVwbGFjZV9vbmNlKAogICAgY3JlYXRvciwKICAgICcnJyAgICBjb25zdCBHUklEX1NJWkUgPSA1MDsKICAgIGNvbnN0IEVNUFRZX0NPTE9SX0lOREVYID0gMjU1OwogICAgY29uc3QgRU1QVFlfVEFSR0VUX1RPS0VOID0gIl9fZW1wdHlfXyI7JycnLAogICAgJycnICAgIGNvbnN0IEdSSURfU0laRSA9IDUwOwogICAgY29uc3QgTUFYX1FVQU5USVpBVElPTl9UQVJHRVRTID0gR1JJRF9TSVpFICogR1JJRF9TSVpFOwogICAgY29uc3QgRU1QVFlfQ09MT1JfSU5ERVggPSA2NTUzNTsKICAgIGNvbnN0IEVNUFRZX1RBUkdFVF9UT0tFTiA9ICJfX2VtcHR5X18iOycnJywKICAgICJjcmVhdG9yIGNvbnN0YW50cyIKKQpjcmVhdG9yID0gcmVwbGFjZV9vbmNlKAogICAgY3JlYXRvciwKICAgICIgICAgICAgICAgICBpZiAocGFsZXR0ZS5sZW5ndGggPj0gNSkgYnJlYWs7IiwKICAgICIgICAgICAgICAgICBpZiAocGFsZXR0ZS5sZW5ndGggPj0gTUFYX1FVQU5USVpBVElPTl9UQVJHRVRTKSBicmVhazsiLAogICAgImNyZWF0b3IgcGFsZXR0ZSBjYXAiCikKY3JlYXRvciA9IHJlcGxhY2Vfb25jZSgKICAgIGNyZWF0b3IsCiAgICAiICAgICAgICAgICAgaWYgKHRhcmdldHMubGVuZ3RoID49IDUpIGJyZWFrOyIsCiAgICAiICAgICAgICAgICAgaWYgKHRhcmdldHMubGVuZ3RoID49IE1BWF9RVUFOVElaQVRJT05fVEFSR0VUUykgYnJlYWs7IiwKICAgICJjcmVhdG9yIHRhcmdldCBjYXAiCikKY3JlYXRvciA9IHJlcGxhY2Vfb25jZSgKICAgIGNyZWF0b3IsCiAgICAiICAgICAgICBjb25zdCBjb2xvcl9tYXAgPSBuZXcgVWludDhBcnJheShHUklEX1NJWkUgKiBHUklEX1NJWkUpOyIsCiAgICAiICAgICAgICBjb25zdCBjb2xvcl9tYXAgPSBuZXcgVWludDE2QXJyYXkoR1JJRF9TSVpFICogR1JJRF9TSVpFKTsiLAogICAgImNyZWF0b3IgcXVhbnRpemVkIG1hcCIKKQpjcmVhdG9yID0gcmVwbGFjZV9vbmNlKAogICAgY3JlYXRvciwKICAgICIgICAgICAgICAgICAgICAgICAgIGNvbG9yX21hcDogVWludDhBcnJheS5mcm9tKHRoaXMuY3VycmVudF9jb2xvcl9tYXApLCIsCiAgICAiICAgICAgICAgICAgICAgICAgICBjb2xvcl9tYXA6IFVpbnQxNkFycmF5LmZyb20odGhpcy5jdXJyZW50X2NvbG9yX21hcCksIiwKICAgICJjcmVhdG9yIGdlbmVyYXRpb24gbWFwIgopCmNyZWF0b3IgPSByZXBsYWNlX29uY2UoCiAgICBjcmVhdG9yLAogICAgIiAgICAgICAgICAgIHRoaXMuY3VycmVudF9jb2xvcl9tYXAgPSBuZXcgVWludDhBcnJheShsZXZlbC5jb2x1bW5zICogbGV2ZWwucm93cyk7IiwKICAgICIgICAgICAgICAgICB0aGlzLmN1cnJlbnRfY29sb3JfbWFwID0gbmV3IFVpbnQxNkFycmF5KGxldmVsLmNvbHVtbnMgKiBsZXZlbC5yb3dzKTsiLAogICAgImNyZWF0b3IgaW1wb3J0ZWQgbWFwIgopCmNyZWF0b3IgPSByZXBsYWNlX29uY2UoCiAgICBjcmVhdG9yLAogICAgIiAgICAgICAgICAgICAgICB0aGlzLmN1cnJlbnRfY29sb3JfbWFwID0gbmV3IFVpbnQ4QXJyYXkobWFzay5sZW5ndGgpOyIsCiAgICAiICAgICAgICAgICAgICAgIHRoaXMuY3VycmVudF9jb2xvcl9tYXAgPSBuZXcgVWludDE2QXJyYXkobWFzay5sZW5ndGgpOyIsCiAgICAiY3JlYXRvciBmYWxsYmFjayBtYXAiCikKY3JlYXRvciA9IHJlcGxhY2Vfb25jZSgKICAgIGNyZWF0b3IsCiAgICAiICAgIG5ldyBMZXZlbEVkaXRvckFwcGxpY2F0aW9uKGVsZW1lbnRzKTsiLAogICAgIiAgICBnbG9iYWxUaGlzLkNob29ic0NyZWF0b3JBcHAgPSBuZXcgTGV2ZWxFZGl0b3JBcHBsaWNhdGlvbihlbGVtZW50cyk7IiwKICAgICJjcmVhdG9yIGFwcGxpY2F0aW9uIGV4cG9ydCIKKQpjcmVhdG9yX3BhdGgud3JpdGVfdGV4dChjcmVhdG9yKQoKaHRtbF9wYXRoID0gUGF0aCgiY3JlYXRvci9pbmRleC5odG1sIikKaHRtbCA9IGh0bWxfcGF0aC5yZWFkX3RleHQoKQpodG1sID0gcmVwbGFjZV9vbmNlKAogICAgaHRtbCwKICAgICJhIHBvcHVwIGxldHMgeW91IHVzZSBhbiBhdXRvbWF0aWNhbGx5IGRldGVjdGVkIHBhbGV0dGUgb3IgY2hvb3NlIG9uZSB0byBmaXZlIHRhcmdldCBjb2xvdXJzIG1hbnVhbGx5LiIsCiAgICAiYSBwb3B1cCBsZXRzIHlvdSBkZXRlY3QgYSBwYWxldHRlIG9yIGJ1aWxkIGEgZnVsbHkgY3VzdG9tIGxpc3Qgb2YgdGFyZ2V0IGNvbG91cnMuIiwKICAgICJjcmVhdG9yIHNvdXJjZSBoZWxwIgopCmh0bWwgPSByZXBsYWNlX29uY2UoCiAgICBodG1sLAogICAgIkNob29zZSB1cCB0byBmaXZlIHRhcmdldCBjb2xvdXJzIGZvciB0aGUgZmluYWwgaW1hZ2UuIiwKICAgICJBZGQsIHJlbW92ZSwgcmVvcmRlciwgYW5kIGVkaXQgYXMgbWFueSB0YXJnZXQgY29sb3VycyBhcyB0aGUgNTAgw5cgNTAgc291cmNlIGNhbiBjb250YWluLiIsCiAgICAiY3JlYXRvciBkaWFsb2cgaGVscCIKKQpodG1sID0gcmVwbGFjZV9vbmNlKAogICAgaHRtbCwKICAgICcnJyAgICA8c2NyaXB0IHNyYz0ianMvY3JlYXRvci5qcyI+PC9zY3JpcHQ+JycnLAogICAgJycnICAgIDxzY3JpcHQgc3JjPSJqcy9jcmVhdG9yLmpzIj48L3NjcmlwdD4KICAgIDxzY3JpcHQgc3JjPSJqcy91bmxpbWl0ZWRfcXVhbnRpemF0aW9uLmpzIj48L3NjcmlwdD4nJycsCiAgICAiY3JlYXRvciBzY3JpcHQgbG9hZCIKKQpodG1sX3BhdGgud3JpdGVfdGV4dChodG1sKQoKc3R5bGVzX3BhdGggPSBQYXRoKCJjcmVhdG9yL3N0eWxlcy5jc3MiKQpzdHlsZXMgPSBzdHlsZXNfcGF0aC5yZWFkX3RleHQoKQpzdHlsZXMgKz0gJycnCgovKiBDb250cm9scyBzaG91bGQgaHVnIHRoZWlyIGxhYmVscyBpbnN0ZWFkIG9mIHN0cmV0Y2hpbmcgYWNyb3NzIGEgcGFuZWwuICovCmJ1dHRvbiwKLmJ1dHRvbiwKLnByaW1hcnlfYnV0dG9uLAouc2Vjb25kYXJ5X2J1dHRvbiwKLmZpbGVfYnV0dG9uLAouY29tcGFjdF9idXR0b24gewogICAgd2lkdGg6IGZpdC1jb250ZW50ICFpbXBvcnRhbnQ7CiAgICBtYXgtd2lkdGg6IDEwMCU7CiAgICBqdXN0aWZ5LXNlbGY6IHN0YXJ0Owp9CgouZmlsZV9idXR0b24gewogICAgaW5saW5lLXNpemU6IGZpdC1jb250ZW50Owp9CicnJwpzdHlsZXNfcGF0aC53cml0ZV90ZXh0KHN0eWxlcykKCmNyZWF0b3JfY3NzX3BhdGggPSBQYXRoKCJjcmVhdG9yL2NyZWF0b3IuY3NzIikKY3JlYXRvcl9jc3MgPSBjcmVhdG9yX2Nzc19wYXRoLnJlYWRfdGV4dCgpCmNyZWF0b3JfY3NzICs9ICcnJwoKLyogRHluYW1pYyBxdWFudGlzYXRpb24gcGFsZXR0ZSBlZGl0b3IgKi8KLnBhbGV0dGVfcHJldmlldyB7CiAgICBkaXNwbGF5OiBmbGV4OwogICAgZmxleC13cmFwOiB3cmFwOwogICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiBub25lOwp9CgoucGFsZXR0ZV9zd2F0Y2ggewogICAgd2lkdGg6IDI4cHg7CiAgICBmbGV4OiAwIDAgMjhweDsKfQoKLnF1YW50aXphdGlvbl9hdXRvX2NvbnRyb2xzLAoucXVhbnRpemF0aW9uX2xpc3RfYWN0aW9ucywKLnF1YW50aXphdGlvbl9yb3dfYWN0aW9ucyB7CiAgICBkaXNwbGF5OiBmbGV4OwogICAgYWxpZ24taXRlbXM6IGNlbnRlcjsKICAgIGdhcDogOHB4OwogICAgZmxleC13cmFwOiB3cmFwOwp9CgoucXVhbnRpemF0aW9uX2F1dG9fY29udHJvbHMgbGFiZWwgewogICAgY29sb3I6IHZhcigtLW11dGVkX3N0cm9uZywgI2JiYzFjOSk7CiAgICBmb250LXNpemU6IDEycHg7CiAgICBmb250LXdlaWdodDogNjAwOwp9CgojcXVhbnRpemF0aW9uX2F1dG9fY291bnQgewogICAgd2lkdGg6IDg4cHg7CiAgICBtaW4taGVpZ2h0OiA0MHB4Owp9CgoucXVhbnRpemF0aW9uX2NvbG9yX2xpc3QgewogICAgbWF4LWhlaWdodDogbWluKDQ4dmgsIDUyMHB4KTsKICAgIG92ZXJmbG93LXk6IGF1dG87CiAgICBwYWRkaW5nLXJpZ2h0OiA0cHg7CiAgICBzY3JvbGxiYXItZ3V0dGVyOiBzdGFibGU7Cn0KCi5xdWFudGl6YXRpb25fY29sb3Jfcm93IHsKICAgIGdyaWQtdGVtcGxhdGUtY29sdW1uczoKICAgICAgICBtaW5tYXgoNzBweCwgYXV0bykKICAgICAgICA0NnB4CiAgICAgICAgbWlubWF4KDk2cHgsIDFmcikKICAgICAgICBhdXRvCiAgICAgICAgbWlubWF4KDAsIGF1dG8pOwp9CgoucXVhbnRpemF0aW9uX3Jvd19hY3Rpb25zIHsKICAgIGp1c3RpZnktY29udGVudDogZmxleC1lbmQ7CiAgICBmbGV4LXdyYXA6IG5vd3JhcDsKfQoKLnF1YW50aXphdGlvbl9yb3dfYWN0aW9ucyAuY29tcGFjdF9idXR0b24gewogICAgbWluLXdpZHRoOiAzNHB4Owp9CgoucXVhbnRpemF0aW9uX2xpc3RfYWN0aW9ucyB7CiAgICBqdXN0aWZ5LWNvbnRlbnQ6IHNwYWNlLWJldHdlZW47CiAgICBtYXJnaW4tdG9wOiAxMnB4Owp9CgoucXVhbnRpemF0aW9uX3RhcmdldF9jb3VudCB7CiAgICBkaXNwbGF5OiBpbmxpbmUtZmxleDsKICAgIG1pbi1oZWlnaHQ6IDMwcHg7CiAgICBhbGlnbi1pdGVtczogY2VudGVyOwogICAgcGFkZGluZzogNXB4IDlweDsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlciwgIzJiMmYzNyk7CiAgICBib3JkZXItcmFkaXVzOiA3cHg7CiAgICBjb2xvcjogdmFyKC0tbXV0ZWRfc3Ryb25nLCAjYmJjMWM5KTsKICAgIGJhY2tncm91bmQ6IHZhcigtLXN1cmZhY2VfcmFpc2VkLCAjMWQyMDI2KTsKICAgIGZvbnQtc2l6ZTogMTJweDsKICAgIGZvbnQtdmFyaWFudC1udW1lcmljOiB0YWJ1bGFyLW51bXM7Cn0KCkBtZWRpYSAobWF4LXdpZHRoOiA3MDBweCkgewogICAgLnF1YW50aXphdGlvbl9jb2xvcl9yb3cgewogICAgICAgIGdyaWQtdGVtcGxhdGUtY29sdW1uczogYXV0byA0NnB4IG1pbm1heCg5MnB4LCAxZnIpOwogICAgfQoKICAgIC5xdWFudGl6YXRpb25fZW1wdHlfdG9nZ2xlIHsKICAgICAgICBncmlkLWNvbHVtbjogMSAvIDM7CiAgICB9CgogICAgLnF1YW50aXphdGlvbl9yb3dfYWN0aW9ucyB7CiAgICAgICAgZ3JpZC1jb2x1bW46IDM7CiAgICAgICAganVzdGlmeS1jb250ZW50OiBmbGV4LWVuZDsKICAgIH0KCiAgICAucXVhbnRpemF0aW9uX2xpc3RfYWN0aW9ucyB7CiAgICAgICAgYWxpZ24taXRlbXM6IGZsZXgtc3RhcnQ7CiAgICAgICAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICAgIH0KfQonJycKY3JlYXRvcl9jc3NfcGF0aC53cml0ZV90ZXh0KGNyZWF0b3JfY3NzKQoKd29ya2VyID0gUGF0aCgic2VydmljZS13b3JrZXIuanMiKQpzZXJ2aWNlX3dvcmtlciA9IHdvcmtlci5yZWFkX3RleHQoKQpzZXJ2aWNlX3dvcmtlciA9IHJlcGxhY2Vfb25jZSgKICAgIHNlcnZpY2Vfd29ya2VyLAogICAgJyAgICAiLi9jcmVhdG9yL2pzL2NyZWF0b3IuanMiJywKICAgICcgICAgIi4vY3JlYXRvci9qcy9jcmVhdG9yLmpzIixcbiAgICAiLi9jcmVhdG9yL2pzL3VubGltaXRlZF9xdWFudGl6YXRpb24uanMiJywKICAgICJvZmZsaW5lIGFzc2V0IgopCndvcmtlci53cml0ZV90ZXh0KHNlcnZpY2Vfd29ya2VyKQoKYXNzZXJ0ICJwYWxldHRlLmxlbmd0aCA+PSA1IiBub3QgaW4gY3JlYXRvcgphc3NlcnQgInRhcmdldHMubGVuZ3RoID49IDUiIG5vdCBpbiBjcmVhdG9yCmFzc2VydCAiVWludDhBcnJheS5mcm9tKHRoaXMuY3VycmVudF9jb2xvcl9tYXApIiBub3QgaW4gY3JlYXRvcgphc3NlcnQgInVubGltaXRlZF9xdWFudGl6YXRpb24uanMiIGluIGh0bWwKYXNzZXJ0ICJ1bmxpbWl0ZWRfcXVhbnRpemF0aW9uLmpzIiBpbiBzZXJ2aWNlX3dvcmtlcgo=' | base64 -d > /tmp/update_creator.py
+          python /tmp/update_creator.py
+
+      - name: Validate
+        shell: bash
+        run: |
+          node --check js/engine.js
+          node --check creator/js/engine.js
+          node --check creator/js/creator.js
+          node --check creator/js/unlimited_quantization.js
+          node --check creator/js/generation_worker_source.js
+
+          node <<'JS'
+          const fs = require("fs");
+          const vm = require("vm");
+          const assert = require("assert");
+
+          const context = { console };
+          context.globalThis = context;
+          vm.createContext(context);
+          vm.runInContext(
+              fs.readFileSync("creator/js/engine.js", "utf8"),
+              context
+          );
+
+          const palette = Array.from({ length: 32 }, (_, index) =>
+              `#${index.toString(16).padStart(6, "0")}`
+          );
+          const mask = Array(16).fill(0);
+          mask[0] = 1;
+          const level = context.Choobs.normalize_level({
+              version: 1,
+              number: 1,
+              name: "palette test",
+              palette,
+              columns: 4,
+              rows: 4,
+              mask,
+              pipes: [{
+                  id: 0,
+                  color_index: 31,
+                  cells: [[0, 0]],
+                  direction: [1, 0]
+              }],
+              solution_order: [0],
+              settings: {}
+          });
+          assert.strictEqual(level.palette.length, 32);
+          assert.strictEqual(level.pipes[0].color_index, 31);
+
+          vm.runInContext(
+              fs.readFileSync(
+                  "creator/js/generation_worker_source.js",
+                  "utf8"
+              ),
+              context
+          );
+          assert(
+              context.ChoobsGenerationWorkerSource.includes(
+                  "MAX_PALETTE_SIZE = 2500"
+              )
+          );
+          assert(
+              context.ChoobsGenerationWorkerSource.includes(
+                  "Uint16Array.from(options.color_map"
+              )
+          );
+          new vm.Script(context.ChoobsGenerationWorkerSource);
+
+          const creator = fs.readFileSync(
+              "creator/js/creator.js",
+              "utf8"
+          );
+          assert(
+              creator.includes(
+                  "MAX_QUANTIZATION_TARGETS = GRID_SIZE * GRID_SIZE"
+              )
+          );
+          assert(
+              creator.includes(
+                  "globalThis.ChoobsCreatorApp"
+              )
+          );
+
+          const html = fs.readFileSync(
+              "creator/index.html",
+              "utf8"
+          );
+          assert(
+              html.includes(
+                  "js/unlimited_quantization.js"
+              )
+          );
+
+          const css = fs.readFileSync(
+              "creator/styles.css",
+              "utf8"
+          );
+          assert(css.includes("width: fit-content !important"));
+          JS
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          rm .github/workflows/update-creator-quantisation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add creator/index.html creator/styles.css creator/creator.css \
+              creator/js/creator.js creator/js/engine.js \
+              creator/js/generation_worker_source.js \
+              creator/js/unlimited_quantization.js js/engine.js \
+              service-worker.js \
+              .github/workflows/update-creator-quantisation.yml
+          git commit -m "Expand creator quantisation controls"
+          git push
