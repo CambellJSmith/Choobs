@@ -36,11 +36,74 @@ jobs:
           )
           if not match:
               raise RuntimeError('Could not locate embedded update script')
-          Path('/tmp/update_creator.py').write_bytes(
-              base64.b64decode(match.group(1))
-          )
+
+          script = base64.b64decode(match.group(1)).decode()
+          old_loop = 'for path_string in ["js/engine.js", "creator/js/engine.js"]:'
+          new_loop = 'for path_string in ["creator/js/engine.js"]:'
+          if script.count(old_loop) != 1:
+              raise RuntimeError('Could not isolate creator engine patch')
+          script = script.replace(old_loop, new_loop)
+          Path('/tmp/update_creator.py').write_text(script)
           PY
           python /tmp/update_creator.py
+
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('js/engine.js')
+          text = path.read_text()
+
+          def replace_once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(
+                      f'{label}: expected 1 match, found {count}'
+                  )
+              text = text.replace(old, new)
+
+          replace_once(
+              '''    const PIPE_COLORS = Object.freeze([
+        "#ff5c7a", "#ffd166", "#4dd6a8", "#5b9dff", "#b983ff"
+    ]);
+
+
+    function normalize_palette(raw_palette) {''',
+              '''    const PIPE_COLORS = Object.freeze([
+        "#ff5c7a", "#ffd166", "#4dd6a8", "#5b9dff", "#b983ff"
+    ]);
+    const MAX_PALETTE_SIZE = 2500;
+
+
+    function normalize_palette(raw_palette) {''',
+              'runtime palette constant'
+          )
+          replace_once(
+              '''            if (palette.length === 5) {
+                break;
+            }
+        }
+
+        if (palette.length === 0) {
+            return Array.from(PIPE_COLORS);
+        }
+
+        return palette.slice(0, 5);''',
+              '''            if (palette.length >= MAX_PALETTE_SIZE) {
+                break;
+            }
+        }
+
+        if (palette.length === 0) {
+            return Array.from(PIPE_COLORS);
+        }
+
+        return palette;''',
+              'runtime palette cap'
+          )
+
+          path.write_text(text)
+          PY
 
       - name: Validate generated files
         shell: bash
@@ -56,24 +119,25 @@ jobs:
           const vm = require('vm');
           const assert = require('assert');
 
-          const context = { console };
-          context.globalThis = context;
-          vm.createContext(context);
-          vm.runInContext(fs.readFileSync('creator/js/engine.js', 'utf8'), context);
+          function loadEngine(path) {
+              const context = { console };
+              context.globalThis = context;
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(path, 'utf8'), context);
+              return context;
+          }
 
           const palette = Array.from({ length: 32 }, (_, index) =>
               `#${index.toString(16).padStart(6, '0')}`
           );
-          const mask = Array(16).fill(0);
-          mask[0] = 1;
-          const level = context.Choobs.normalize_level({
+          const levelData = {
               version: 1,
               number: 1,
               name: 'palette test',
               palette,
               columns: 4,
               rows: 4,
-              mask,
+              mask: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               pipes: [{
                   id: 0,
                   color_index: 31,
@@ -82,17 +146,25 @@ jobs:
               }],
               solution_order: [0],
               settings: {}
-          });
-          assert.strictEqual(level.palette.length, 32);
-          assert.strictEqual(level.pipes[0].color_index, 31);
+          };
 
+          for (const path of ['js/engine.js', 'creator/js/engine.js']) {
+              const context = loadEngine(path);
+              const level = context.Choobs.normalize_level(levelData);
+              assert.strictEqual(level.palette.length, 32);
+              assert.strictEqual(level.pipes[0].color_index, 31);
+          }
+
+          const workerContext = { console };
+          workerContext.globalThis = workerContext;
+          vm.createContext(workerContext);
           vm.runInContext(
               fs.readFileSync('creator/js/generation_worker_source.js', 'utf8'),
-              context
+              workerContext
           );
-          assert(context.ChoobsGenerationWorkerSource.includes('MAX_PALETTE_SIZE = 2500'));
-          assert(context.ChoobsGenerationWorkerSource.includes('Uint16Array.from(options.color_map'));
-          new vm.Script(context.ChoobsGenerationWorkerSource);
+          assert(workerContext.ChoobsGenerationWorkerSource.includes('MAX_PALETTE_SIZE = 2500'));
+          assert(workerContext.ChoobsGenerationWorkerSource.includes('Uint16Array.from(options.color_map'));
+          new vm.Script(workerContext.ChoobsGenerationWorkerSource);
 
           const creator = fs.readFileSync('creator/js/creator.js', 'utf8');
           assert(creator.includes('MAX_QUANTIZATION_TARGETS = GRID_SIZE * GRID_SIZE'));
@@ -103,6 +175,9 @@ jobs:
 
           const css = fs.readFileSync('creator/styles.css', 'utf8');
           assert(css.includes('width: fit-content !important'));
+
+          const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
+          assert(serviceWorker.includes('creator/js/unlimited_quantization.js'));
           JS
 
       - name: Commit completed update
