@@ -1,6 +1,14 @@
+---
+layout: null
+---
 "use strict";
 
-const BUILD_VERSION = "2026.07.30.8";
+{% if site.github.build_revision %}
+{% assign build_version = site.github.build_revision %}
+{% else %}
+{% assign build_version = site.time | date: "%Y%m%d%H%M%S" %}
+{% endif %}
+const BUILD_VERSION = "{{ build_version }}";
 const CACHE_PREFIX = "choobs-pwa-";
 const STATIC_CACHE = `${CACHE_PREFIX}static-${BUILD_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${BUILD_VERSION}`;
@@ -20,9 +28,6 @@ const APP_SHELL = [
     "./js/canvas_renderer.js",
     "./js/game.js",
     "./js/pwa.js",
-    "./levels/level_001.json",
-    "./levels/level_002.json",
-    "./levels/level_003.json",
     "./creator/",
     "./creator/index.html",
     "./creator/styles.css",
@@ -34,9 +39,22 @@ const APP_SHELL = [
     "./creator/js/creator.js"
 ];
 
+const LEVEL_ASSETS = [
+{% assign sorted_static_files = site.static_files | sort: "path" %}
+{% for file in sorted_static_files %}
+{% if file.path contains "/levels/level_" %}
+{% if file.extname == ".json" %}
+    ".{{ file.path }}",
+{% endif %}
+{% endif %}
+{% endfor %}
+];
+
+const PRECACHE_ASSETS = [...APP_SHELL, ...LEVEL_ASSETS];
+
 self.addEventListener("install", (event) => {
     event.waitUntil(
-        caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL))
+        caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_ASSETS))
     );
 });
 
