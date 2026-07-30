@@ -2,43 +2,43 @@
     "use strict";
 
 
-const PIPE_BREATH_PERIOD_MS = 4200;
-const PIPE_BREATH_DURATION_MS = 850;
+    const PIPE_BREATH_PERIOD_MS = 4200;
+    const PIPE_BREATH_DURATION_MS = 850;
 
-function get_pipe_breath_amount(time) {
-    const numeric_time = Number(time) || 0;
-    const phase = (
-        (numeric_time % PIPE_BREATH_PERIOD_MS) +
-        PIPE_BREATH_PERIOD_MS
-    ) % PIPE_BREATH_PERIOD_MS;
+    function get_pipe_breath_amount(time) {
+        const numeric_time = Number(time) || 0;
+        const phase = (
+            (numeric_time % PIPE_BREATH_PERIOD_MS) +
+            PIPE_BREATH_PERIOD_MS
+        ) % PIPE_BREATH_PERIOD_MS;
 
-    if (phase >= PIPE_BREATH_DURATION_MS) {
-        return 0;
+        if (phase >= PIPE_BREATH_DURATION_MS) {
+            return 0;
+        }
+
+        const progress = phase / PIPE_BREATH_DURATION_MS;
+        const wave = Math.sin(progress * Math.PI);
+        return wave * wave;
     }
 
-    const progress = phase / PIPE_BREATH_DURATION_MS;
-    const wave = Math.sin(progress * Math.PI);
-    return wave * wave;
-}
+    function breathe_pipe_color(color, amount) {
+        const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
 
-function breathe_pipe_color(color, amount) {
-    const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
+        if (!match || amount <= 0) {
+            return color;
+        }
 
-    if (!match || amount <= 0) {
-        return color;
+        const value = Number.parseInt(match[1], 16);
+        const mix = Math.max(0, Math.min(1, amount));
+        const red = (value >>> 16) & 255;
+        const green = (value >>> 8) & 255;
+        const blue = value & 255;
+        const breathed_red = Math.round(red + (255 - red) * mix);
+        const breathed_green = Math.round(green + (255 - green) * mix);
+        const breathed_blue = Math.round(blue + (255 - blue) * mix);
+
+        return `rgb(${breathed_red}, ${breathed_green}, ${breathed_blue})`;
     }
-
-    const value = Number.parseInt(match[1], 16);
-    const mix = Math.max(0, Math.min(1, amount));
-    const red = (value >>> 16) & 255;
-    const green = (value >>> 8) & 255;
-    const blue = value & 255;
-    const breathed_red = Math.round(red + (255 - red) * mix);
-    const breathed_green = Math.round(green + (255 - green) * mix);
-    const breathed_blue = Math.round(blue + (255 - blue) * mix);
-
-    return `rgb(${breathed_red}, ${breathed_green}, ${breathed_blue})`;
-}
 
     class CanvasRenderer {
         constructor(canvas) {
@@ -408,24 +408,15 @@ function breathe_pipe_color(color, amount) {
             const palette = this.level.palette || Choobs.PIPE_COLORS;
             const pipe_color = palette[pipe.color_index % palette.length];
             const base_pipe_color = blocked ?
-
-                "#ff7d8f" :
-
-                hinted ?
-
-                    "#7ee3c5" :
-
-                    pipe_color;
-
-            const breath_amount = get_pipe_breath_amount(time);
-
-            const rendered_pipe_color = breathe_pipe_color(
-
-                base_pipe_color,
-
-                breath_amount
-
-            );
+                    "#ff7d8f" :
+                    hinted ?
+                        "#7ee3c5" :
+                        pipe_color;
+                const breath_amount = get_pipe_breath_amount(time);
+                const rendered_pipe_color = breathe_pipe_color(
+                    base_pipe_color,
+                    breath_amount
+                );
             const intro_alpha = this.get_intro_alpha(
                 pipe.id,
                 time,
