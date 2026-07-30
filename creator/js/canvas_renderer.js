@@ -1,23 +1,43 @@
 (function (global_scope) {
     "use strict";
 
-    const DARK_PIPE_OUTLINE_LUMINANCE = 73.5;
 
-    function pipe_color_needs_light_outline(color) {
+    const PIPE_BREATH_PERIOD_MS = 4200;
+    const PIPE_BREATH_DURATION_MS = 850;
+
+    function get_pipe_breath_amount(time) {
+        const numeric_time = Number(time) || 0;
+        const phase = (
+            (numeric_time % PIPE_BREATH_PERIOD_MS) +
+            PIPE_BREATH_PERIOD_MS
+        ) % PIPE_BREATH_PERIOD_MS;
+
+        if (phase >= PIPE_BREATH_DURATION_MS) {
+            return 0;
+        }
+
+        const progress = phase / PIPE_BREATH_DURATION_MS;
+        const wave = Math.sin(progress * Math.PI);
+        return wave * wave;
+    }
+
+    function breathe_pipe_color(color, amount) {
         const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
 
-        if (!match) {
-            return false;
+        if (!match || amount <= 0) {
+            return color;
         }
 
         const value = Number.parseInt(match[1], 16);
+        const mix = Math.max(0, Math.min(1, amount));
         const red = (value >>> 16) & 255;
         const green = (value >>> 8) & 255;
         const blue = value & 255;
-        const luminance =
-            red * 0.2126 + green * 0.7152 + blue * 0.0722;
+        const breathed_red = Math.round(red + (255 - red) * mix);
+        const breathed_green = Math.round(green + (255 - green) * mix);
+        const breathed_blue = Math.round(blue + (255 - blue) * mix);
 
-        return luminance <= DARK_PIPE_OUTLINE_LUMINANCE;
+        return `rgb(${breathed_red}, ${breathed_green}, ${breathed_blue})`;
     }
 
     class CanvasRenderer {
@@ -387,14 +407,16 @@
             const side_y = pipe.direction.x;
             const palette = this.level.palette || Choobs.PIPE_COLORS;
             const pipe_color = palette[pipe.color_index % palette.length];
-            const rendered_pipe_color = blocked ?
+            const base_pipe_color = blocked ?
                 "#ff7d8f" :
                 hinted ?
                     "#7ee3c5" :
                     pipe_color;
-            const needs_light_outline =
-                !blocked && !hinted &&
-                pipe_color_needs_light_outline(pipe_color);
+            const breath_amount = get_pipe_breath_amount(time);
+            const rendered_pipe_color = breathe_pipe_color(
+                base_pipe_color,
+                breath_amount
+            );
             const intro_alpha = this.get_intro_alpha(
                 pipe.id,
                 time,
@@ -411,7 +433,7 @@
             context.lineJoin = "round";
 
             if (moving) {
-                context.shadowColor = pipe_color;
+                context.shadowColor = rendered_pipe_color;
                 context.shadowBlur = Math.max(2, cell_size * 0.5);
                 this.draw_speed_streaks(
                     context,
@@ -442,21 +464,6 @@
                 outer_width
             );
 
-            if (needs_light_outline) {
-                const light_outline_width = Math.min(
-                    outer_width - Math.max(1, cell_size * 0.04),
-                    inner_width + Math.max(1.5, cell_size * 0.1)
-                );
-                this.stroke_pipe_shape(
-                    context,
-                    points,
-                    pipe.direction,
-                    cell_size,
-                    "#ffffff",
-                    light_outline_width
-                );
-            }
-
             this.stroke_pipe_shape(
                 context,
                 points,
@@ -484,7 +491,7 @@
                 this.draw_motion_tip(
                     context,
                     arrow_tip,
-                    pipe_color,
+                    rendered_pipe_color,
                     cell_size,
                     time,
                     pipe.id
