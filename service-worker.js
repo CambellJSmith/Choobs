@@ -41,7 +41,8 @@ const APP_SHELL = [
     "./creator/js/engine.js",
     "./creator/js/generation_worker_source.js",
     "./creator/js/canvas_renderer.js",
-    "./creator/js/creator.js"
+    "./creator/js/creator.js",
+    "./creator/js/unlimited_quantization.js"
 ];
 
 const LEVEL_ASSETS = [

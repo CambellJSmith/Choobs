@@ -11,7 +11,8 @@
 
 
     const GRID_SIZE = 50;
-    const EMPTY_COLOR_INDEX = 255;
+    const MAX_QUANTIZATION_TARGETS = GRID_SIZE * GRID_SIZE;
+    const EMPTY_COLOR_INDEX = 65535;
     const EMPTY_TARGET_TOKEN = "__empty__";
     const VISIBLE_ALPHA_THRESHOLD = 128;
     const DEFAULT_PALETTE = Object.freeze([
@@ -268,7 +269,7 @@
             if (/^#[0-9a-f]{6}$/.test(color) && !palette.includes(color)) {
                 palette.push(color);
             }
-            if (palette.length >= 5) break;
+            if (palette.length >= MAX_QUANTIZATION_TARGETS) break;
         }
 
         return palette.length > 0 ? palette : [DEFAULT_PALETTE[0]];
@@ -296,7 +297,7 @@
                 targets.push({ color, is_empty });
             }
 
-            if (targets.length >= 5) break;
+            if (targets.length >= MAX_QUANTIZATION_TARGETS) break;
         }
 
         return targets.length > 0 ? targets : [{
@@ -323,7 +324,7 @@
         }
 
         const mask = new Uint8Array(GRID_SIZE * GRID_SIZE);
-        const color_map = new Uint8Array(GRID_SIZE * GRID_SIZE);
+        const color_map = new Uint16Array(GRID_SIZE * GRID_SIZE);
         color_map.fill(EMPTY_COLOR_INDEX);
         let occupied_count = 0;
 
@@ -981,7 +982,7 @@
 
         draw_default_source() {
             const mask = new Uint8Array(GRID_SIZE * GRID_SIZE);
-            const color_map = new Uint8Array(GRID_SIZE * GRID_SIZE);
+            const color_map = new Uint16Array(GRID_SIZE * GRID_SIZE);
             color_map.fill(EMPTY_COLOR_INDEX);
 
             for (let y = 0; y < GRID_SIZE; y += 1) {
@@ -1053,7 +1054,7 @@
         draw_mask_to_source_canvas(mask) {
             this.current_mask = Uint8Array.from(mask);
             if (!this.current_color_map || this.current_color_map.length !== mask.length) {
-                this.current_color_map = new Uint8Array(mask.length);
+                this.current_color_map = new Uint16Array(mask.length);
                 for (let index = 0; index < mask.length; index += 1) {
                     this.current_color_map[index] = mask[index] ? 0 : EMPTY_COLOR_INDEX;
                 }
@@ -1230,7 +1231,7 @@
                     columns,
                     rows,
                     mask,
-                    color_map: Uint8Array.from(this.current_color_map),
+                    color_map: Uint16Array.from(this.current_color_map),
                     palette: Array.from(this.current_palette),
                     seed: Number(
                         this.elements.seed_input.value
@@ -1660,7 +1661,7 @@
             this.current_mask =
                 Uint8Array.from(level.mask);
             this.current_palette = Array.from(level.palette || DEFAULT_PALETTE);
-            this.current_color_map = new Uint8Array(level.columns * level.rows);
+            this.current_color_map = new Uint16Array(level.columns * level.rows);
             this.current_color_map.fill(EMPTY_COLOR_INDEX);
             for (const pipe of level.pipes) {
                 for (const cell of pipe.cells) {
@@ -1919,5 +1920,5 @@
             document.getElementById("depth_count")
     };
 
-    new LevelEditorApplication(elements);
+    globalThis.ChoobsCreatorApp = new LevelEditorApplication(elements);
 })();

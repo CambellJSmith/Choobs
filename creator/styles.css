@@ -310,3 +310,20 @@ button:disabled,
         transition-duration: 0.001ms !important;
     }
 }
+
+
+/* Controls hug their labels instead of stretching across editor panels. */
+button,
+.button,
+.primary_button,
+.secondary_button,
+.file_button,
+.compact_button {
+    width: fit-content !important;
+    max-width: 100%;
+    justify-self: start;
+}
+
+.file_button {
+    inline-size: fit-content;
+}

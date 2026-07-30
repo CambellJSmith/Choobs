@@ -35,7 +35,7 @@
                     <button id="default_image_button" class="secondary_button" type="button">use default image</button>
                     <p id="source_name_text" class="field_help">built-in 50 × 50 five-colour mask</p>
                     <div id="palette_preview" class="palette_preview" aria-label="Current quantisation palette"></div>
-                    <p class="field_help">Upload any standard image format. After cropping and nearest-neighbour scaling, a popup lets you use an automatically detected palette or choose one to five target colours manually. Transparent and mostly transparent pixels are excluded from the mask and remain empty. A clearly dominant dark border background also remains empty; visible pixels become pipe cells.</p>
+                    <p class="field_help">Upload any standard image format. After cropping and nearest-neighbour scaling, a popup lets you detect a palette or build a fully custom list of target colours. Transparent and mostly transparent pixels are excluded from the mask and remain empty. A clearly dominant dark border background also remains empty; visible pixels become pipe cells.</p>
                 </div>
 
                 <div class="panel_section">
@@ -128,7 +128,7 @@
             </header>
 
             <p id="quantization_description" class="quantization_description">
-                <strong id="quantization_source_name">Uploaded image</strong> has been centre-cropped and scaled to 50 × 50 without smoothing. Choose up to five target colours for the final image. Any target can also be marked as empty, which removes nearby pixels from the mask instead of turning them into pipe cells.
+                <strong id="quantization_source_name">Uploaded image</strong> has been centre-cropped and scaled to 50 × 50 without smoothing. Add, remove, reorder, and edit as many target colours as the 50 × 50 source can contain. Any target can also be marked as empty, which removes nearby pixels from the mask instead of turning them into pipe cells.
             </p>
 
             <div class="quantization_layout">
@@ -207,5 +207,6 @@
     <script src="js/generation_worker_source.js"></script>
     <script src="js/canvas_renderer.js"></script>
     <script src="js/creator.js"></script>
+    <script src="js/unlimited_quantization.js"></script>
 </body>
 </html>
