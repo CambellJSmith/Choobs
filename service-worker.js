@@ -30,6 +30,7 @@ const APP_SHELL = [
     "./js/procedural_levels.js",
     "./js/canvas_renderer.js",
     "./js/pipe_only_renderer.js",
+    "./js/strict_collision_rules.js",
     "./js/game.js",
     "./js/pwa.js",
     "./creator/",
