@@ -89,10 +89,11 @@ jobs:
           for path in paths:
               text = path.read_text()
 
-              helper_start = text.find('const PIPE_BREATH_PERIOD_MS = 4200;')
-              helper_end = text.find('    class CanvasRenderer', helper_start)
-              if helper_start < 0 or helper_end < 0:
+              helper_token = text.find('const PIPE_BREATH_PERIOD_MS = 4200;')
+              helper_end = text.find('    class CanvasRenderer', helper_token)
+              if helper_token < 0 or helper_end < 0:
                   raise RuntimeError(f'{path}: breathing helper boundaries not found')
+              helper_start = text.rfind('\n', 0, helper_token) + 1
               text = text[:helper_start] + helpers + text[helper_end:]
 
               color_start = text.find('            const base_pipe_color = blocked ?')
