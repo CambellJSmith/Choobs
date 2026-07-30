@@ -2,30 +2,75 @@
     "use strict";
 
 
-    const PIPE_BREATH_PERIOD_MS = 4200;
-    const PIPE_BREATH_DURATION_MS = 850;
+    const PIPE_BREATH_IDLE_MS = 5000;
+    const PIPE_BREATH_DURATION_MS = 1000;
+    const PIPE_BREATH_PERIOD_MS =
+        PIPE_BREATH_IDLE_MS + PIPE_BREATH_DURATION_MS;
+    const PIPE_BREATH_BEZIER = [0.42, 0, 0.58, 1];
+
+    function cubic_bezier_axis(time, control_1, control_2) {
+        const inverse = 1 - time;
+        return 3 * inverse * inverse * time * control_1 +
+  3 * inverse * time * time * control_2 +
+  time * time * time;
+    }
+
+    function cubic_bezier_axis_derivative(time, control_1, control_2) {
+        const inverse = 1 - time;
+        return 3 * inverse * inverse * control_1 +
+  6 * inverse * time * (control_2 - control_1) +
+  3 * time * time * (1 - control_2);
+    }
+
+    function cubic_bezier_ease(progress) {
+        const clamped = Math.max(0, Math.min(1, progress));
+        const [x_1, y_1, x_2, y_2] = PIPE_BREATH_BEZIER;
+        let parameter = clamped;
+
+        for (let iteration = 0; iteration < 6; iteration += 1) {
+  const difference =
+      cubic_bezier_axis(parameter, x_1, x_2) - clamped;
+  const derivative =
+      cubic_bezier_axis_derivative(parameter, x_1, x_2);
+
+  if (Math.abs(difference) < 0.00001 ||
+      Math.abs(derivative) < 0.00001) {
+      break;
+  }
+
+  parameter = Math.max(
+      0,
+      Math.min(1, parameter - difference / derivative)
+  );
+        }
+
+        return cubic_bezier_axis(parameter, y_1, y_2);
+    }
 
     function get_pipe_breath_amount(time) {
         const numeric_time = Number(time) || 0;
         const phase = (
-            (numeric_time % PIPE_BREATH_PERIOD_MS) +
-            PIPE_BREATH_PERIOD_MS
+  (numeric_time % PIPE_BREATH_PERIOD_MS) +
+  PIPE_BREATH_PERIOD_MS
         ) % PIPE_BREATH_PERIOD_MS;
 
-        if (phase >= PIPE_BREATH_DURATION_MS) {
-            return 0;
+        if (phase < PIPE_BREATH_IDLE_MS) {
+  return 0;
         }
 
-        const progress = phase / PIPE_BREATH_DURATION_MS;
-        const wave = Math.sin(progress * Math.PI);
-        return wave * wave;
+        const breath_progress =
+  (phase - PIPE_BREATH_IDLE_MS) / PIPE_BREATH_DURATION_MS;
+        const mirrored_progress = breath_progress <= 0.5 ?
+  breath_progress * 2 :
+  (1 - breath_progress) * 2;
+        return cubic_bezier_ease(mirrored_progress);
     }
 
     function breathe_pipe_color(color, amount) {
         const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
 
         if (!match || amount <= 0) {
-            return color;
+  return color;
         }
 
         const value = Number.parseInt(match[1], 16);
@@ -39,7 +84,6 @@
 
         return `rgb(${breathed_red}, ${breathed_green}, ${breathed_blue})`;
     }
-
     class CanvasRenderer {
         constructor(canvas) {
             this.canvas = canvas;
