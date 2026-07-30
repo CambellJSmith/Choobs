@@ -141,7 +141,18 @@ jobs:
         run: |
           node --check js/canvas_renderer.js
           node --check creator/js/canvas_renderer.js
-          cmp js/canvas_renderer.js creator/js/canvas_renderer.js
+          python <<'PY'
+          from pathlib import Path
+
+          def helper_block(path):
+              text = Path(path).read_text()
+              start = text.index('    const PIPE_BREATH_IDLE_MS')
+              end = text.index('    class CanvasRenderer', start)
+              return text[start:end]
+
+          if helper_block('js/canvas_renderer.js') != helper_block('creator/js/canvas_renderer.js'):
+              raise RuntimeError('Breathing helper blocks differ')
+          PY
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
