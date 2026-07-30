@@ -57,7 +57,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 canvas:focus-visible,
-label.button:focus-within {
+label.button:focus-within,
+label.file_button:focus-within {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
 }
@@ -108,7 +109,8 @@ input[type="range"] {
 }
 
 button:disabled,
-.button:has(input:disabled) {
+.button:has(input:disabled),
+.file_button:has(input:disabled) {
     cursor: not-allowed;
     opacity: 0.5;
 }
@@ -236,6 +238,67 @@ button:disabled,
     clip: rect(0, 0, 0, 0) !important;
     white-space: nowrap !important;
     border: 0 !important;
+}
+
+/* Compatibility for the class names used by the current creator markup. */
+.primary_button,
+.secondary_button,
+.file_button {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius_small);
+    appearance: none;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.primary_button {
+    border-color: var(--accent);
+    color: var(--accent_text);
+    background: var(--accent);
+}
+
+.primary_button:hover {
+    border-color: var(--accent_hover);
+    background: var(--accent_hover);
+}
+
+.secondary_button,
+.file_button {
+    border-color: var(--border_strong);
+    color: var(--text);
+    background: var(--surface_raised);
+}
+
+.secondary_button:hover,
+.file_button:hover {
+    background: var(--surface_hover);
+}
+
+.file_button {
+    width: 100%;
+}
+
+.compact_button {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 13px;
+}
+
+.primary_button:active,
+.secondary_button:active,
+.file_button:active {
+    filter: brightness(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
