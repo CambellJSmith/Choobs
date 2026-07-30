@@ -1,6 +1,25 @@
 (function (global_scope) {
     "use strict";
 
+    const DARK_PIPE_OUTLINE_LUMINANCE = 48;
+
+    function pipe_color_needs_light_outline(color) {
+        const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
+
+        if (!match) {
+            return false;
+        }
+
+        const value = Number.parseInt(match[1], 16);
+        const red = (value >>> 16) & 255;
+        const green = (value >>> 8) & 255;
+        const blue = value & 255;
+        const luminance =
+            red * 0.2126 + green * 0.7152 + blue * 0.0722;
+
+        return luminance <= DARK_PIPE_OUTLINE_LUMINANCE;
+    }
+
     class CanvasRenderer {
         constructor(canvas) {
             this.canvas = canvas;
@@ -368,6 +387,8 @@
             const side_y = pipe.direction.x;
             const palette = this.level.palette || Choobs.PIPE_COLORS;
             const pipe_color = palette[pipe.color_index % palette.length];
+            const needs_light_outline =
+                !blocked && pipe_color_needs_light_outline(pipe_color);
             const intro_alpha = this.get_intro_alpha(
                 pipe.id,
                 time,
@@ -412,6 +433,20 @@
                 "#080a0e",
                 outer_width
             );
+
+            if (needs_light_outline) {
+                const light_outline_width = Math.min(
+                    outer_width,
+                    inner_width + Math.max(1, cell_size * 0.055)
+                );
+                this.stroke_polyline(
+                    context,
+                    points,
+                    "#ffffff",
+                    light_outline_width
+                );
+            }
+
             this.stroke_polyline(
                 context,
                 points,
@@ -432,7 +467,9 @@
             }
 
             const arrow_colors = {
-                outer: "#080a0e",
+                outer: needs_light_outline && !hinted ?
+                    "#ffffff" :
+                    "#080a0e",
                 inner: blocked ?
                     "#ff7d8f" :
                     hinted ?
