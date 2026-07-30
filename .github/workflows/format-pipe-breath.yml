@@ -70,10 +70,6 @@ jobs:
               }
 
           '''
-          helpers = '\n'.join(
-              line[4:] if line.startswith('    ') else line
-              for line in helpers.splitlines()
-          )
 
           color_block = '''            const base_pipe_color = blocked ?
                               "#ff7d8f" :
@@ -86,10 +82,6 @@ jobs:
                               breath_amount
                           );
           '''
-          color_block = '\n'.join(
-              line[12:] if line.startswith('            ') else line
-              for line in color_block.splitlines()
-          )
 
           for path in paths:
               text = path.read_text()
