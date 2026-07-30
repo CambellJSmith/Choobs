@@ -168,6 +168,21 @@
                     <p id="pause_mode_description" class="pause_mode_description">No penalties. Experiment freely.</p>
                 </div>
 
+
+                <button id="safetap_mode_button" class="pause_row" type="button" aria-pressed="false">
+                    <span class="pause_row_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <circle cx="12" cy="12" r="6" />
+                            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M12 9v6M9 12h6" />
+                        </svg>
+                    </span>
+                    <span class="pause_row_copy">
+                        <strong>Safetap mode</strong>
+                        <small id="safetap_mode_description">Exact taps only</small>
+                    </span>
+                    <span id="safetap_mode_state" class="pause_level_badge" aria-hidden="true">Off</span>
+                </button>
+
                 <button id="reset_game_button" class="pause_row pause_row_danger" type="button">
                     <span class="pause_row_icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13" /></svg>
@@ -316,5 +331,237 @@
     <script src="js/pipe_only_renderer.js"></script>
     <script src="js/game.js"></script>
     <script src="js/pwa.js"></script>
+
+    <script>
+    (() => {
+        "use strict";
+
+        const STORAGE_KEY = "choobs_safetap_mode_v1";
+        const MAX_DISTANCE_CELLS = 3;
+        const MAX_DISTANCE_SQUARED =
+            MAX_DISTANCE_CELLS * MAX_DISTANCE_CELLS;
+        const button = document.getElementById("safetap_mode_button");
+        const state_label = document.getElementById("safetap_mode_state");
+        const description =
+            document.getElementById("safetap_mode_description");
+        let enabled = load_setting();
+
+        function load_setting() {
+            try {
+                return localStorage.getItem(STORAGE_KEY) === "1";
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function save_setting() {
+            try {
+                localStorage.setItem(STORAGE_KEY, enabled ? "1" : "0");
+            } catch (error) {
+                console.warn("Safetap preference could not be saved.", error);
+            }
+        }
+
+        function update_button() {
+            if (!button) {
+                return;
+            }
+
+            button.setAttribute("aria-pressed", String(enabled));
+
+            if (state_label) {
+                state_label.textContent = enabled ? "On" : "Off";
+            }
+
+            if (description) {
+                description.textContent = enabled ?
+                    "Aim toward valid pipes within three cells" :
+                    "Exact taps only";
+            }
+        }
+
+        function get_tap_grid_position(renderer, event) {
+            if (!renderer || !renderer.level || !event) {
+                return null;
+            }
+
+            const rect = renderer.canvas.getBoundingClientRect();
+            const scale_x = rect.width / Math.max(1, renderer.css_width);
+            const scale_y = rect.height / Math.max(1, renderer.css_height);
+            const local_x =
+                (event.clientX - rect.left) / Math.max(0.0001, scale_x);
+            const local_y =
+                (event.clientY - rect.top) / Math.max(0.0001, scale_y);
+            const cell_size = Math.max(
+                0.0001,
+                renderer.board_bounds.cell_size
+            );
+
+            return {
+                x: (local_x - renderer.board_bounds.x) / cell_size,
+                y: (local_y - renderer.board_bounds.y) / cell_size
+            };
+        }
+
+        function find_assisted_target(application, event) {
+            const session = application.session;
+            const tap = get_tap_grid_position(application.renderer, event);
+
+            if (!session || !tap) {
+                return null;
+            }
+
+            let best = null;
+
+            for (const pipe of session.pipes) {
+                if (!pipe.active || pipe.cells.length === 1 ||
+                    session.moving_pipes.has(pipe.id) ||
+                    session.queued_pipes && session.queued_pipes.has(pipe.id)) {
+                    continue;
+                }
+
+                const activation = session.can_activate(pipe.id);
+
+                if (!activation || !activation.ok) {
+                    continue;
+                }
+
+                for (
+                    let cell_index = 0;
+                    cell_index < pipe.cells.length;
+                    cell_index += 1
+                ) {
+                    const cell = pipe.cells[cell_index];
+                    const offset_x = cell.x + 0.5 - tap.x;
+                    const offset_y = cell.y + 0.5 - tap.y;
+                    const distance_squared =
+                        offset_x * offset_x + offset_y * offset_y;
+
+                    if (distance_squared > MAX_DISTANCE_SQUARED) {
+                        continue;
+                    }
+
+                    if (!best ||
+                        distance_squared < best.distance_squared - 0.000001 ||
+                        Math.abs(
+                            distance_squared - best.distance_squared
+                        ) <= 0.000001 && (
+                            pipe.id < best.pipe.id ||
+                            pipe.id === best.pipe.id &&
+                                cell_index < best.cell_index
+                        )) {
+                        best = {
+                            pipe,
+                            cell,
+                            cell_index,
+                            distance_squared
+                        };
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        function direct_tap_is_valid(application, event) {
+            const cell = application.renderer.pointer_to_cell(event);
+
+            if (!cell) {
+                return false;
+            }
+
+            const pipe_id =
+                application.session.grid.get_occupant(cell.x, cell.y);
+
+            if (pipe_id < 0) {
+                return false;
+            }
+
+            const pipe = application.session.get_pipe(pipe_id);
+
+            return Boolean(
+                pipe &&
+                pipe.cells.length > 1 &&
+                application.session.can_activate(pipe_id).ok
+            );
+        }
+
+        function create_redirected_event(application, target) {
+            const renderer = application.renderer;
+            const center = renderer.cell_center(target.cell.x, target.cell.y);
+            const rect = renderer.canvas.getBoundingClientRect();
+            const scale_x = rect.width / Math.max(1, renderer.css_width);
+            const scale_y = rect.height / Math.max(1, renderer.css_height);
+
+            return {
+                clientX: rect.left + center.x * scale_x,
+                clientY: rect.top + center.y * scale_y
+            };
+        }
+
+        function install_safetap(application) {
+            if (!application ||
+                !application.__choobs_queue_rules_installed) {
+                return false;
+            }
+
+            if (application.__choobs_safetap_installed) {
+                return true;
+            }
+
+            const original_handle_pointer_down =
+                application.handle_pointer_down.bind(application);
+
+            application.handle_pointer_down = function (event) {
+                if (!enabled || !this.session ||
+                    direct_tap_is_valid(this, event)) {
+                    return original_handle_pointer_down(event);
+                }
+
+                const target = find_assisted_target(this, event);
+
+                if (!target) {
+                    return original_handle_pointer_down(event);
+                }
+
+                return original_handle_pointer_down(
+                    create_redirected_event(this, target)
+                );
+            };
+
+            application.__choobs_safetap_installed = true;
+            return true;
+        }
+
+        button?.addEventListener("click", () => {
+            enabled = !enabled;
+            save_setting();
+            update_button();
+
+            if (globalThis.choobsGame) {
+                globalThis.choobsGame.set_status(
+                    `Safetap mode ${enabled ? "enabled" : "disabled"}.`
+                );
+            }
+        });
+
+        update_button();
+
+        let attempts = 0;
+        const wait_for_game_rules = () => {
+            if (install_safetap(globalThis.choobsGame)) {
+                return;
+            }
+
+            attempts += 1;
+
+            if (attempts < 240) {
+                globalThis.setTimeout(wait_for_game_rules, 25);
+            }
+        };
+
+        globalThis.setTimeout(wait_for_game_rules, 0);
+    })();
+    </script>
 </body>
 </html>
