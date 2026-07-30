@@ -1,3 +1,4 @@
+# Triggered after the draft PR was opened.
 name: Cache level select names
 
 on:
