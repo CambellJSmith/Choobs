@@ -14,6 +14,7 @@ const CAMPAIGN_EXTENSION_ASSETS = [
     "./js/campaigns.js",
     "./js/pwa_core.js",
     "./creator/js/unlimited_quantization_core.js",
+    "./creator/js/bulk_strict_quantization.js",
     "./creator/js/bulk_creator.js",
 {% assign sorted_campaign_assets = site.static_files | sort: "path" %}
 {% for file in sorted_campaign_assets %}
