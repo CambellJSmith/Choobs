@@ -26,6 +26,7 @@ jobs:
         run: |
           python <<'PY'
           from pathlib import Path
+          import re
 
           paths = [
               Path('js/canvas_renderer.js'),
@@ -34,23 +35,31 @@ jobs:
 
           old_threshold = 'const DARK_PIPE_OUTLINE_LUMINANCE = 48;'
           new_threshold = 'const DARK_PIPE_OUTLINE_LUMINANCE = 72;'
-          old_width = '''                const light_outline_width = Math.min(
-                    outer_width,
-                    inner_width + Math.max(1, cell_size * 0.055)
-                );'''
-          new_width = '''                const light_outline_width = Math.min(
-                    outer_width - Math.max(1, cell_size * 0.04),
-                    inner_width + Math.max(1.5, cell_size * 0.1)
-                );'''
+          width_pattern = re.compile(
+              r'(?P<indent>\s*)const light_outline_width = Math\.min\(\s*'
+              r'outer_width,\s*'
+              r'inner_width \+ Math\.max\(1, cell_size \* 0\.055\)\s*'
+              r'\);'
+          )
 
           for path in paths:
               text = path.read_text()
               if text.count(old_threshold) != 1:
                   raise RuntimeError(f'{path}: expected one luminance threshold')
-              if text.count(old_width) != 1:
-                  raise RuntimeError(f'{path}: expected one outline-width block')
               text = text.replace(old_threshold, new_threshold)
-              text = text.replace(old_width, new_width)
+
+              def replace_width(match):
+                  indent = match.group('indent')
+                  return (
+                      f'{indent}const light_outline_width = Math.min(\n'
+                      f'{indent}    outer_width - Math.max(1, cell_size * 0.04),\n'
+                      f'{indent}    inner_width + Math.max(1.5, cell_size * 0.1)\n'
+                      f'{indent});'
+                  )
+
+              text, count = width_pattern.subn(replace_width, text)
+              if count != 1:
+                  raise RuntimeError(f'{path}: expected one outline-width block, found {count}')
               path.write_text(text)
           PY
 
