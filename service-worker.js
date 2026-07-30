@@ -79,8 +79,32 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-    if (event.data && event.data.type === "SKIP_WAITING") {
-        self.skipWaiting();
+    const message = event.data || {};
+
+    if (message.type === "SKIP_WAITING") {
+        event.waitUntil(self.skipWaiting());
+        return;
+    }
+
+    if (message.type === "CACHE_ALL_OFFLINE_FILES") {
+        const response_port = event.ports && event.ports[0];
+        const cache_task = refresh_all_offline_files()
+            .then((asset_count) => {
+                response_port?.postMessage({
+                    ok: true,
+                    asset_count,
+                    build_version: BUILD_VERSION
+                });
+            })
+            .catch((error) => {
+                response_port?.postMessage({
+                    ok: false,
+                    message: error.message || "Offline files could not be cached."
+                });
+                throw error;
+            });
+
+        event.waitUntil(cache_task);
     }
 });
 
@@ -109,6 +133,22 @@ self.addEventListener("fetch", (event) => {
 
     event.respondWith(cache_first_with_refresh(request));
 });
+
+async function refresh_all_offline_files() {
+    const cache = await caches.open(STATIC_CACHE);
+
+    for (const asset of PRECACHE_ASSETS) {
+        const response = await fetch(asset, { cache: "reload" });
+
+        if (!response || !response.ok) {
+            throw new Error(`Could not save ${asset} for offline use.`);
+        }
+
+        await cache.put(asset, response);
+    }
+
+    return PRECACHE_ASSETS.length;
+}
 
 async function handle_navigation(event) {
     const request = event.request;
