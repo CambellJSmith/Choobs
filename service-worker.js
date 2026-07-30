@@ -8,6 +8,7 @@ importScripts("./service-worker-core.js");
 const CAMPAIGN_EXTENSION_ASSETS = [
     "./service-worker-core.js",
     "./js/campaign_manifest.js",
+    "./js/campaign_migrations.js",
     "./js/campaigns.js",
     "./js/pwa_core.js",
     "./creator/js/unlimited_quantization_core.js",

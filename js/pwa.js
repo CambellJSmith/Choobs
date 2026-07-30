@@ -20,6 +20,7 @@
     (async () => {
         try {
             await load_script("campaign_manifest.js");
+            await load_script("campaign_migrations.js");
             await load_script("campaigns.js");
         } catch (error) {
             console.error("Campaign support could not be loaded.", error);
