@@ -1,7 +1,7 @@
 (function (global_scope) {
     "use strict";
 
-    const DARK_PIPE_OUTLINE_LUMINANCE = 48;
+    const DARK_PIPE_OUTLINE_LUMINANCE = 73.5;
 
     function pipe_color_needs_light_outline(color) {
         const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
@@ -494,8 +494,11 @@
 
             if (needs_light_outline) {
                 const light_outline_width = Math.min(
-                    outer_width,
-                    inner_width + Math.max(1, cell_size * 0.055)
+
+                    outer_width - Math.max(1, cell_size * 0.04),
+
+                    inner_width + Math.max(1.5, cell_size * 0.1)
+
                 );
                 this.stroke_polyline(
                     context,
