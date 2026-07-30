@@ -1,0 +1,196 @@
+name: Refine pipe breath timing
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  apply-update:
+    if: github.event.pull_request.head.ref == 'agent/refine-pipe-breath-timing' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/refine-pipe-breath-timing
+
+      - name: Apply five-second idle and one-second Bezier breath
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          paths = [
+              Path('js/canvas_renderer.js'),
+              Path('creator/js/canvas_renderer.js'),
+          ]
+
+          replacement = '''    const PIPE_BREATH_IDLE_MS = 5000;
+              const PIPE_BREATH_DURATION_MS = 1000;
+              const PIPE_BREATH_PERIOD_MS =
+                  PIPE_BREATH_IDLE_MS + PIPE_BREATH_DURATION_MS;
+              const PIPE_BREATH_BEZIER = [0.42, 0, 0.58, 1];
+
+              function cubic_bezier_axis(time, control_1, control_2) {
+                  const inverse = 1 - time;
+                  return 3 * inverse * inverse * time * control_1 +
+                      3 * inverse * time * time * control_2 +
+                      time * time * time;
+              }
+
+              function cubic_bezier_axis_derivative(time, control_1, control_2) {
+                  const inverse = 1 - time;
+                  return 3 * inverse * inverse * control_1 +
+                      6 * inverse * time * (control_2 - control_1) +
+                      3 * time * time * (1 - control_2);
+              }
+
+              function cubic_bezier_ease(progress) {
+                  const clamped = Math.max(0, Math.min(1, progress));
+                  const [x_1, y_1, x_2, y_2] = PIPE_BREATH_BEZIER;
+                  let parameter = clamped;
+
+                  for (let iteration = 0; iteration < 6; iteration += 1) {
+                      const difference =
+                          cubic_bezier_axis(parameter, x_1, x_2) - clamped;
+                      const derivative =
+                          cubic_bezier_axis_derivative(parameter, x_1, x_2);
+
+                      if (Math.abs(difference) < 0.00001 ||
+                          Math.abs(derivative) < 0.00001) {
+                          break;
+                      }
+
+                      parameter = Math.max(
+                          0,
+                          Math.min(1, parameter - difference / derivative)
+                      );
+                  }
+
+                  return cubic_bezier_axis(parameter, y_1, y_2);
+              }
+
+              function get_pipe_breath_amount(time) {
+                  const numeric_time = Number(time) || 0;
+                  const phase = (
+                      (numeric_time % PIPE_BREATH_PERIOD_MS) +
+                      PIPE_BREATH_PERIOD_MS
+                  ) % PIPE_BREATH_PERIOD_MS;
+
+                  if (phase < PIPE_BREATH_IDLE_MS) {
+                      return 0;
+                  }
+
+                  const breath_progress =
+                      (phase - PIPE_BREATH_IDLE_MS) / PIPE_BREATH_DURATION_MS;
+                  const mirrored_progress = breath_progress <= 0.5 ?
+                      breath_progress * 2 :
+                      (1 - breath_progress) * 2;
+                  return cubic_bezier_ease(mirrored_progress);
+              }
+
+              function breathe_pipe_color(color, amount) {
+                  const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
+
+                  if (!match || amount <= 0) {
+                      return color;
+                  }
+
+                  const value = Number.parseInt(match[1], 16);
+                  const mix = Math.max(0, Math.min(1, amount));
+                  const red = (value >>> 16) & 255;
+                  const green = (value >>> 8) & 255;
+                  const blue = value & 255;
+                  const breathed_red = Math.round(red + (255 - red) * mix);
+                  const breathed_green = Math.round(green + (255 - green) * mix);
+                  const breathed_blue = Math.round(blue + (255 - blue) * mix);
+
+                  return `rgb(${breathed_red}, ${breathed_green}, ${breathed_blue})`;
+              }
+
+          '''
+          replacement = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in replacement.splitlines()
+          )
+
+          pattern = re.compile(
+              r'    const PIPE_BREATH_PERIOD_MS = 4200;.*?'
+              r'(?=    class CanvasRenderer)',
+              re.S,
+          )
+
+          for path in paths:
+              text = path.read_text()
+              updated, count = pattern.subn(replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f'{path}: breathing helper block not found')
+              path.write_text(updated)
+          PY
+
+      - name: Validate Bezier breath timing
+        shell: bash
+        run: |
+          node --check js/canvas_renderer.js
+          node --check creator/js/canvas_renderer.js
+          cmp js/canvas_renderer.js creator/js/canvas_renderer.js
+          node <<'NODE'
+          const fs = require('fs');
+          const vm = require('vm');
+          const source = fs.readFileSync('js/canvas_renderer.js', 'utf8');
+          const helperStart = source.indexOf('    const PIPE_BREATH_IDLE_MS');
+          const helperEnd = source.indexOf('    class CanvasRenderer', helperStart);
+          if (helperStart < 0 || helperEnd < 0) {
+              throw new Error('Breathing helpers not found');
+          }
+          const helpers = source.slice(helperStart, helperEnd) + `\n` +
+              'globalThis.testBreath = get_pipe_breath_amount;\n' +
+              'globalThis.testColor = breathe_pipe_color;';
+          const context = {};
+          vm.createContext(context);
+          vm.runInContext(helpers, context);
+
+          const amount = context.testBreath;
+          const close = (actual, expected, tolerance = 0.0001) => {
+              if (Math.abs(actual - expected) > tolerance) {
+                  throw new Error(`Expected ${expected}, received ${actual}`);
+              }
+          };
+
+          close(amount(0), 0);
+          close(amount(4999), 0);
+          close(amount(5000), 0);
+          if (!(amount(5250) > 0 && amount(5250) < 1)) {
+              throw new Error('Breath must rise during its first half');
+          }
+          close(amount(5500), 1);
+          if (!(amount(5750) > 0 && amount(5750) < 1)) {
+              throw new Error('Breath must fall during its second half');
+          }
+          close(amount(6000), 0);
+          close(amount(10999), 0);
+          close(amount(11500), 1);
+          if (context.testColor('#123456', amount(5500)) !== 'rgb(255, 255, 255)') {
+              throw new Error('Peak breath must reach full white');
+          }
+          NODE
+          ! grep -q 'PIPE_BREATH_PERIOD_MS = 4200' js/canvas_renderer.js
+          ! grep -q 'Math.sin(progress \* Math.PI)' js/canvas_renderer.js
+
+      - name: Commit completed update
+        shell: bash
+        run: |
+          rm -f .github/workflows/refine-pipe-breath-timing.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Refine pipe breath timing'
+          git push origin HEAD:agent/refine-pipe-breath-timing
