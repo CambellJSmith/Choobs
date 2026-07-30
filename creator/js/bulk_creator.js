@@ -483,6 +483,7 @@
             progress.hidden = false;
             document.body.classList.add("bulk_quantizing");
             const exported = [];
+            let processed_count = 0;
             const requested_start = Math.max(
                 1,
                 Math.floor(Number(app.elements.level_number_input.value) || 1)
@@ -530,6 +531,7 @@
                     } else {
                         exported.push({ name: file_name, text });
                     }
+                    processed_count += 1;
                 }
 
                 if (destination.type === "download" && exported.length > 0) {
@@ -537,10 +539,7 @@
                     download_blob(zip, `choobs_campaign_${Date.now()}.zip`);
                 }
                 progress_fill.style.transform = "scaleX(1)";
-                const completed = destination.type === "directory" ?
-                    Math.min(files.length, Math.max(0,
-                        Number(app.elements.level_number_input.value) - start_number + 1
-                    )) : exported.length;
+                const completed = processed_count;
                 app.set_status(
                     bulk_cancel_requested ?
                         `Bulk export stopped after ${completed} level${completed === 1 ? "" : "s"}.` :

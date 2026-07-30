@@ -148,9 +148,29 @@
         });
     }
 
+    function storage_get(key, fallback = null) {
+        try {
+            const value = localStorage.getItem(key);
+            return value === null ? fallback : value;
+        } catch (error) {
+            console.warn(`Could not read ${key}.`, error);
+            return fallback;
+        }
+    }
+
+    function storage_set(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (error) {
+            console.warn(`Could not save ${key}.`, error);
+            return false;
+        }
+    }
+
     function load_progress() {
         const parsed = safe_json_parse(
-            localStorage.getItem(CAMPAIGN_PROGRESS_KEY) || "{}",
+            storage_get(CAMPAIGN_PROGRESS_KEY, "{}"),
             {}
         );
         const progress = {};
@@ -171,7 +191,7 @@
 
     function load_name_cache() {
         const parsed = safe_json_parse(
-            localStorage.getItem(CAMPAIGN_NAMES_KEY) || "{}",
+            storage_get(CAMPAIGN_NAMES_KEY, "{}"),
             {}
         );
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ?
@@ -179,11 +199,7 @@
     }
 
     function save_object(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (error) {
-            console.warn(`Could not save ${key}.`, error);
-        }
+        storage_set(key, JSON.stringify(value));
     }
 
     function migrate_legacy_progress(progress) {
@@ -192,7 +208,7 @@
         }
 
         const legacy_values = safe_json_parse(
-            localStorage.getItem(LEGACY_COMPLETED_KEY) || "[]",
+            storage_get(LEGACY_COMPLETED_KEY, "[]"),
             []
         );
         const legacy = new Set(
@@ -671,11 +687,11 @@
         app.save_current_progress = function (reason = "autosave") {
             original.save_current_progress(reason);
             try {
-                const raw = localStorage.getItem("choobs_autosave_v1");
+                const raw = storage_get("choobs_autosave_v1");
                 if (!raw) return;
                 const autosave = JSON.parse(raw);
                 autosave.campaign_id = get_active_campaign().id;
-                localStorage.setItem("choobs_autosave_v1", JSON.stringify(autosave));
+                storage_set("choobs_autosave_v1", JSON.stringify(autosave));
             } catch (error) {
                 console.warn("Campaign autosave metadata could not be saved.", error);
             }
@@ -705,7 +721,7 @@
             save_object(CAMPAIGN_PROGRESS_KEY, state.progress);
             state.active = campaign_by_id.get(ROOT_CAMPAIGN_ID);
             this.completed_numbers = new Set();
-            localStorage.setItem(ACTIVE_CAMPAIGN_KEY, ROOT_CAMPAIGN_ID);
+            storage_set(ACTIVE_CAMPAIGN_KEY, ROOT_CAMPAIGN_ID);
             state.first_choice_pending = true;
             await original.reset_game();
             update_campaign_ui();
@@ -738,7 +754,7 @@
             }
 
             state.active = campaign;
-            localStorage.setItem(ACTIVE_CAMPAIGN_KEY, campaign.id);
+            storage_set(ACTIVE_CAMPAIGN_KEY, campaign.id);
             this.completed_numbers = new Set(state.progress[campaign.id] || []);
             set_active_name_cache(campaign.id);
             this.load_request_id += 1;
@@ -794,14 +810,16 @@
         }
 
         if (!requested_campaign) {
-            requested_campaign = localStorage.getItem(ACTIVE_CAMPAIGN_KEY) ||
-                ROOT_CAMPAIGN_ID;
+            requested_campaign = storage_get(
+                ACTIVE_CAMPAIGN_KEY,
+                ROOT_CAMPAIGN_ID
+            );
         }
         if (!campaign_by_id.has(requested_campaign)) {
             requested_campaign = ROOT_CAMPAIGN_ID;
         }
 
-        const had_saved_campaign = Boolean(localStorage.getItem(ACTIVE_CAMPAIGN_KEY));
+        const had_saved_campaign = Boolean(storage_get(ACTIVE_CAMPAIGN_KEY));
         await app.switch_campaign(requested_campaign, requested_level, {
             initial: true
         });
