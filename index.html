@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#0b0d16">
+    <meta name="color-scheme" content="dark">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Choobs">
+    <meta name="format-detection" content="telephone=no">
+    <title>Choobs</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="game_shell">
+        <header class="game_hud" aria-label="Game controls">
+            <div class="brand_lockup" aria-label="Choobs">
+                <span class="brand_mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" focusable="false">
+                        <path d="M9 8v9c0 4 2 7 7 7h7" />
+                        <path d="M15 8v7c0 2 1 3 3 3h5" />
+                        <path d="m21 14 4 4-4 4" />
+                    </svg>
+                </span>
+                <span class="brand_name">Choobs</span>
+            </div>
+
+            <div class="level_picker">
+                <span class="level_caption">Level</span>
+                <select id="level_select" aria-label="Choose an unlocked level"></select>
+                <svg class="select_chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <path d="m6 8 4 4 4-4" />
+                </svg>
+            </div>
+
+            <div class="hud_actions">
+                <div id="heartbeat_meter" class="heartbeat_meter hidden" aria-label="Three safe attempts remaining">
+                    <span class="heart" aria-hidden="true">♥</span>
+                    <span class="heart" aria-hidden="true">♥</span>
+                    <span class="heart" aria-hidden="true">♥</span>
+                </div>
+
+                <button id="menu_button" class="menu_button" type="button" aria-label="Open game menu" aria-haspopup="dialog" aria-controls="pause_overlay">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M5 7h14M5 12h14M5 17h14" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <section class="game_surface" aria-label="Puzzle board">
+            <div class="score_stack" aria-label="Run score">
+                <div class="score_chip">
+                    <span>Score</span>
+                    <strong id="score_value">0</strong>
+                </div>
+                <div id="combo_hud" class="combo_hud hidden" aria-live="polite">
+                    <div class="combo_copy">
+                        <strong id="combo_value">×2</strong>
+                        <span>Combo</span>
+                    </div>
+                    <div class="combo_track" aria-hidden="true">
+                        <span id="combo_fill"></span>
+                    </div>
+                </div>
+            </div>
+            <div id="score_effects_layer" class="score_effects_layer" aria-hidden="true"></div>
+            <div id="board_stage" class="board_stage">
+                <div class="board_scroller_content">
+                    <div id="canvas_frame" class="canvas_frame">
+                    <canvas id="game_canvas" tabindex="0" aria-label="Choobs puzzle"></canvas>
+
+                    <div id="loading_overlay" class="loading_overlay">
+                        <div class="loading_brand" aria-hidden="true">
+                            <svg viewBox="0 0 32 32" focusable="false">
+                                <path d="M9 8v9c0 4 2 7 7 7h7" />
+                                <path d="M15 8v7c0 2 1 3 3 3h5" />
+                                <path d="m21 14 4 4-4 4" />
+                            </svg>
+                        </div>
+                        <div class="loading_bar" aria-hidden="true"><span></span></div>
+                        <span class="screen_reader_only">Loading level</span>
+                    </div>
+
+                    <div id="win_overlay" class="win_overlay hidden">
+                        <div class="win_card" role="dialog" aria-modal="true" aria-labelledby="win_title">
+                            <div class="completion_mark" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false">
+                                    <path d="M6.5 12.5 10 16l7.5-8" />
+                                </svg>
+                            </div>
+                            <p class="completion_eyebrow">Level complete</p>
+                            <h1 id="win_title">Unravelled</h1>
+                            <div class="completion_stats" aria-label="Score summary">
+                                <div><span>Run score</span><strong id="win_score">0</strong></div>
+                                <div><span>Level points</span><strong id="win_level_points">+0</strong></div>
+                                <div><span>Best combo</span><strong id="win_best_combo">×1</strong></div>
+                            </div>
+                            <div class="win_actions">
+                                <button id="continue_button" class="primary_button" type="button">
+                                    <span id="continue_button_label">Next level</span>
+                                    <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m8 5 5 5-5 5" /></svg>
+                                </button>
+                                <button id="replay_button" class="secondary_button" type="button">
+                                    <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M15 7a6 6 0 1 0 .4 5M15 3v4h-4" /></svg>
+                                    <span>Replay</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <p id="status_text" class="screen_reader_only" aria-live="polite"></p>
+        <input id="level_import_input" class="screen_reader_only" type="file" accept="application/json,.json" multiple>
+    </main>
+
+
+    <div id="pause_overlay" class="pause_overlay hidden" aria-hidden="true">
+        <section class="pause_sheet" role="dialog" aria-modal="true" aria-labelledby="pause_title">
+            <div class="pause_grabber" aria-hidden="true"></div>
+
+            <header class="pause_header">
+                <div>
+                    <p class="pause_kicker">Paused</p>
+                    <h1 id="pause_title">Choobs</h1>
+                </div>
+                <div class="pause_badges">
+                    <span id="pause_score_badge" class="pause_level_badge">0 points</span>
+                    <span id="pause_level_badge" class="pause_level_badge">Level 1</span>
+                </div>
+            </header>
+
+            <button id="resume_button" class="primary_button pause_resume" type="button">
+                <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m8 5 5 5-5 5" /></svg>
+                <span>Resume</span>
+            </button>
+
+            <div class="pause_group">
+                <button id="restart_menu_button" class="pause_row" type="button">
+                    <span class="pause_row_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M19 8a8 8 0 1 0 .6 7M19 3v5h-5" /></svg>
+                    </span>
+                    <span class="pause_row_copy">
+                        <strong>Restart level</strong>
+                        <small>Return this board to its starting state</small>
+                    </span>
+                    <span class="pause_row_arrow" aria-hidden="true">›</span>
+                </button>
+
+                <div class="pause_mode_control">
+                    <div class="pause_mode_heading">
+                        <span>Game mode</span>
+                        <strong id="pause_mode_name">Freeplay</strong>
+                    </div>
+                    <div class="pause_mode_choices" role="radiogroup" aria-label="Game mode">
+                        <button type="button" data-pause-mode="freeplay" role="radio" aria-checked="false">Freeplay</button>
+                        <button type="button" data-pause-mode="heartbeat" role="radio" aria-checked="false">Heartbeat</button>
+                        <button type="button" data-pause-mode="permadeath" role="radio" aria-checked="false">Permadeath</button>
+                    </div>
+                    <p id="pause_mode_description" class="pause_mode_description">No penalties. Experiment freely.</p>
+                </div>
+
+                <button id="reset_game_button" class="pause_row pause_row_danger" type="button">
+                    <span class="pause_row_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13" /></svg>
+                    </span>
+                    <span class="pause_row_copy">
+                        <strong>Reset game</strong>
+                        <small>Erase progress and choose a new run</small>
+                    </span>
+                    <span class="pause_row_arrow" aria-hidden="true">›</span>
+                </button>
+
+
+                <button id="install_app_button" class="pause_row hidden" type="button">
+                    <span class="pause_row_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M5 20h14" /></svg>
+                    </span>
+                    <span class="pause_row_copy">
+                        <strong>Install Choobs</strong>
+                        <small>Add the game to this device</small>
+                    </span>
+                    <span class="pause_row_arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button id="close_app_button" class="pause_row" type="button">
+                    <span class="pause_row_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9" /></svg>
+                    </span>
+                    <span class="pause_row_copy">
+                        <strong>Close Choobs</strong>
+                        <small>Save immediately and leave the app</small>
+                    </span>
+                    <span class="pause_row_arrow" aria-hidden="true">›</span>
+                </button>
+            </div>
+
+            <div id="reset_confirmation" class="reset_confirmation hidden" role="alertdialog" aria-labelledby="reset_title" aria-describedby="reset_description">
+                <h2 id="reset_title">Reset the entire game?</h2>
+                <p id="reset_description">Completed levels, the current board, run score, and your selected mode will be erased. Imported level files will remain available.</p>
+                <div class="reset_actions">
+                    <button id="cancel_reset_button" class="secondary_button" type="button">Cancel</button>
+                    <button id="confirm_reset_button" class="danger_button" type="button">Reset everything</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="close_overlay" class="close_overlay hidden" aria-hidden="true">
+        <section class="close_card" role="dialog" aria-modal="true" aria-labelledby="close_title">
+            <div class="close_mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M6.5 12.5 10 16l7.5-8" /></svg>
+            </div>
+            <p class="completion_eyebrow">Autosave complete</p>
+            <h1 id="close_title">Progress saved</h1>
+            <p>Choobs attempted to close. When the browser prevents apps from closing themselves, you can safely close this window or use your device’s back control.</p>
+            <button id="return_to_game_button" class="secondary_button" type="button">Return to game</button>
+        </section>
+    </div>
+
+    <div id="mode_overlay" class="mode_overlay hidden">
+        <section class="mode_dialog" role="dialog" aria-modal="true" aria-labelledby="mode_title">
+            <div class="mode_brand" aria-label="Choobs">
+                <span class="mode_brand_mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" focusable="false">
+                        <path d="M9 8v9c0 4 2 7 7 7h7" />
+                        <path d="M15 8v7c0 2 1 3 3 3h5" />
+                        <path d="m21 14 4 4-4 4" />
+                    </svg>
+                </span>
+                <span>Choobs</span>
+            </div>
+
+            <div class="mode_heading">
+                <p class="mode_kicker">New game</p>
+                <h1 id="mode_title">Choose your run</h1>
+                <p class="mode_intro">Your choice is saved on this device.</p>
+            </div>
+
+            <div class="mode_options">
+                <button class="mode_option" type="button" data-mode="freeplay">
+                    <span class="mode_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M8.2 9.2c-2.5-2.5-6.2-1-6.2 2.8s3.7 5.3 6.2 2.8l7.6-7.6c2.5-2.5 6.2-1 6.2 2.8s-3.7 5.3-6.2 2.8L13 10" /></svg>
+                    </span>
+                    <span class="mode_copy">
+                        <span class="mode_name">Freeplay</span>
+                        <span class="mode_description">No penalties. Experiment freely.</span>
+                    </span>
+                    <span class="mode_arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button class="mode_option" type="button" data-mode="heartbeat">
+                    <span class="mode_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M20.8 4.7a5.4 5.4 0 0 0-7.6 0L12 5.9l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.7a5.4 5.4 0 0 0 0-7.6Z" /><path d="M5.5 12h3l1.5-3 3 6 1.5-3h4" /></svg>
+                    </span>
+                    <span class="mode_copy">
+                        <span class="mode_name">Heartbeat</span>
+                        <span class="mode_description">Three mistakes restart the level.</span>
+                    </span>
+                    <span class="mode_arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button class="mode_option mode_option_danger" type="button" data-mode="permadeath">
+                    <span class="mode_icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M5 11a7 7 0 1 1 14 0c0 3-1.5 5-4 6v3H9v-3c-2.5-1-4-3-4-6Z" /><path d="M9 11h.01M15 11h.01M10 16h4" /></svg>
+                    </span>
+                    <span class="mode_copy">
+                        <span class="mode_name">Permadeath</span>
+                        <span class="mode_description">Three mistakes erase the entire run.</span>
+                    </span>
+                    <span class="mode_arrow" aria-hidden="true">›</span>
+                </button>
+            </div>
+        </section>
+    </div>
+
+
+    <div id="install_overlay" class="install_overlay hidden" aria-hidden="true">
+        <section class="install_card" role="dialog" aria-modal="true" aria-labelledby="install_title">
+            <button id="close_install_button" class="install_close_button" type="button" aria-label="Close installation instructions">×</button>
+            <div class="install_icon" aria-hidden="true">
+                <img src="icon-192.png" alt="">
+            </div>
+            <p class="completion_eyebrow">Install Choobs</p>
+            <h1 id="install_title">Add it to your Home Screen</h1>
+            <ol class="install_steps">
+                <li><span class="install_step_number">1</span><span>Open Choobs in <strong>Safari</strong>.</span></li>
+                <li><span class="install_step_number">2</span><span>Tap the <strong>Share</strong> button.</span></li>
+                <li><span class="install_step_number">3</span><span>Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</span></li>
+            </ol>
+            <button id="dismiss_install_button" class="primary_button install_done_button" type="button">Done</button>
+        </section>
+    </div>
+
+    <div id="pwa_update_toast" class="pwa_toast hidden" role="status" aria-live="polite">
+        <span>Choobs has an update ready.</span>
+        <button id="apply_update_button" type="button">Restart</button>
+    </div>
+
+    <div id="pwa_connection_toast" class="pwa_toast pwa_connection_toast hidden" role="status" aria-live="polite">
+        <span id="pwa_connection_message">Offline mode</span>
+    </div>
+
+    <script src="js/levels.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/procedural_levels.js"></script>
+    <script src="js/canvas_renderer.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/pwa.js"></script>
+</body>
+</html>

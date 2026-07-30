@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#10131a">
+    <title>Choobs Level Creator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="creator.css">
+</head>
+<body>
+    <main class="app_shell editor_shell">
+        <header class="top_bar">
+            <div>
+                <p class="eyebrow">standalone level authoring tool</p>
+                <h1>Choobs Level Creator</h1>
+            </div>
+        </header>
+
+        <section class="editor_workspace">
+            <aside class="control_panel editor_controls">
+                <div class="panel_section">
+                    <h2>level identity</h2>
+                    <label class="field_label" for="level_number_input">level number</label>
+                    <input id="level_number_input" type="number" min="1" max="9999" value="1">
+                    <p class="field_help">The exported filename and level data use this number.</p>
+                    <label class="field_label" for="level_name_input">level name</label>
+                    <input id="level_name_input" type="text" maxlength="80" value="custom level">
+                </div>
+
+                <div class="panel_section">
+                    <h2>source image</h2>
+                    <label class="file_button" for="image_input">choose image</label>
+                    <input id="image_input" type="file" accept="image/*">
+                    <button id="default_image_button" class="secondary_button" type="button">use default image</button>
+                    <p id="source_name_text" class="field_help">built-in 50 × 50 five-colour mask</p>
+                    <div id="palette_preview" class="palette_preview" aria-label="Current quantisation palette"></div>
+                    <p class="field_help">Upload any standard image format. After cropping and nearest-neighbour scaling, a popup lets you use an automatically detected palette or choose one to five target colours manually. Transparent and mostly transparent pixels are excluded from the mask and remain empty. A clearly dominant dark border background also remains empty; visible pixels become pipe cells.</p>
+                </div>
+
+                <div class="panel_section">
+                    <h2>generation</h2>
+                    <div class="fixed_setting_row">
+                        <span>grid size</span>
+                        <strong>50 × 50</strong>
+                    </div>
+                    <p class="field_help">The grid is always 50 × 50. Every visible quantised pixel is covered by pipework, and pipe colours follow the corresponding source-colour region.</p>
+                    <input id="grid_size" type="hidden" value="50">
+                    <output id="grid_size_output" hidden>50 × 50</output>
+                    <input id="white_majority" type="hidden" value="100">
+                    <output id="white_majority_output" hidden>100%</output>
+
+                    <label class="range_row" for="pipe_length"><span>average pipe length · doubled</span><output id="pipe_length_output">medium</output></label>
+                    <input id="pipe_length" type="range" min="0" max="2" value="1" step="1">
+
+                    <label class="range_row" for="nesting"><span>pipe nesting</span><output id="nesting_output">Nested</output></label>
+                    <input id="nesting" type="range" min="0" max="3" value="2" step="1">
+                    <p class="field_help">Higher settings make pipes follow, wrap around, and enclose neighbouring pipes. Turns are only added when they support the nest or follow the image boundary.</p>
+
+                    <label class="field_label" for="seed_input">generation seed</label>
+                    <div class="seed_row">
+                        <input id="seed_input" type="number" min="0" max="4294967295" value="1">
+                        <button id="random_seed_button" class="secondary_button compact_button" type="button">random</button>
+                    </div>
+
+                    <button id="generate_button" class="primary_button" type="button">generate preview</button>
+                </div>
+
+                <div class="panel_section">
+                    <h2>level file</h2>
+                    <button id="export_button" class="primary_button" type="button">export level json</button>
+                    <label class="file_button secondary_file_button" for="import_input">open level json</label>
+                    <input id="import_input" type="file" accept="application/json,.json">
+                    <p class="field_help">Exported files are self-contained and can be archived or transferred independently.</p>
+                </div>
+            </aside>
+
+            <section class="editor_main">
+                <div class="editor_toolbar">
+                    <div>
+                        <p class="eyebrow">collision-safe play-test</p>
+                        <p id="editor_status" aria-live="polite">Generating the default preview…</p>
+                    </div>
+                    <div class="button_row toolbar_buttons">
+                        <button id="hint_button" class="secondary_button" type="button">hint</button>
+                        <button id="reset_test_button" class="secondary_button" type="button">reset test</button>
+                        <label class="toggle_row inline_toggle" for="show_mask">
+                            <span>show mask</span>
+                            <input id="show_mask" type="checkbox" checked>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="canvas_frame" class="canvas_frame editor_canvas_frame">
+                    <canvas id="editor_canvas" aria-label="Level preview"></canvas>
+                    <div id="loading_overlay" class="loading_overlay hidden">
+                        <div class="spinner"></div>
+                        <p>building level…</p>
+                    </div>
+                </div>
+
+                <div class="status_group editor_stats" aria-live="polite">
+                    <div class="stat"><span class="stat_label">valid cells</span><strong id="valid_cell_count">0</strong></div>
+                    <div class="stat"><span class="stat_label">pipes</span><strong id="pipe_count">0</strong></div>
+                    <div class="stat"><span class="stat_label">open</span><strong id="open_count">0</strong></div>
+                    <div class="stat"><span class="stat_label">depth</span><strong id="depth_count">0</strong></div>
+                </div>
+            </section>
+        </section>
+
+        <div hidden>
+            <p id="overwrite_notice"></p>
+            <button id="delete_button" type="button"></button>
+            <button id="refresh_library_button" type="button"></button>
+            <span id="server_badge"></span>
+            <div id="level_library_list"></div>
+        </div>
+    </main>
+
+    <div id="quantization_overlay" class="quantization_overlay hidden" aria-hidden="true">
+        <section class="quantization_dialog" role="dialog" aria-modal="true" aria-labelledby="quantization_title" aria-describedby="quantization_description">
+            <header class="quantization_header">
+                <div>
+                    <p class="eyebrow">image preparation</p>
+                    <h2 id="quantization_title">Choose quantisation colours</h2>
+                </div>
+                <span id="quantization_mode_badge" class="quantization_badge">Automatic palette</span>
+            </header>
+
+            <p id="quantization_description" class="quantization_description">
+                <strong id="quantization_source_name">Uploaded image</strong> has been centre-cropped and scaled to 50 × 50 without smoothing. Choose up to five target colours for the final image. Any target can also be marked as empty, which removes nearby pixels from the mask instead of turning them into pipe cells.
+            </p>
+
+            <div class="quantization_layout">
+                <div class="quantization_preview_panel">
+                    <canvas id="quantization_preview_canvas" width="50" height="50" aria-label="Live quantised image preview"></canvas>
+                    <div class="quantization_preview_meta">
+                        <span>Live preview</span>
+                        <strong id="quantization_effective_count">5 colours</strong>
+                    </div>
+                </div>
+
+                <div class="quantization_controls">
+                    <div class="quantization_auto_row">
+                        <div>
+                            <strong>Automatic selection</strong>
+                            <p id="quantization_auto_summary">Auto detected five meaningful colours.</p>
+                        </div>
+                        <button id="quantization_auto_button" class="secondary_button" type="button">Use auto colours</button>
+                    </div>
+
+                    <label class="field_label" for="quantization_color_count">Number of target colours</label>
+                    <select id="quantization_color_count">
+                        <option value="1">1 colour</option>
+                        <option value="2">2 colours</option>
+                        <option value="3">3 colours</option>
+                        <option value="4">4 colours</option>
+                        <option value="5">5 colours</option>
+                    </select>
+
+                    <div class="quantization_color_list" aria-label="Target colours">
+                        <div class="quantization_color_row">
+                            <label for="quantization_color_1">Target 1</label>
+                            <input id="quantization_color_1" class="quantization_color_input" data-quant-index="0" type="color" value="#ff5c7a">
+                            <input class="quantization_hex_input" data-quant-index="0" type="text" value="#ff5c7a" maxlength="7" aria-label="Target 1 hexadecimal value">
+                            <label class="quantization_empty_toggle"><input class="quantization_empty_input" data-quant-index="0" type="checkbox"> empty</label>
+                        </div>
+                        <div class="quantization_color_row">
+                            <label for="quantization_color_2">Target 2</label>
+                            <input id="quantization_color_2" class="quantization_color_input" data-quant-index="1" type="color" value="#ffd166">
+                            <input class="quantization_hex_input" data-quant-index="1" type="text" value="#ffd166" maxlength="7" aria-label="Target 2 hexadecimal value">
+                            <label class="quantization_empty_toggle"><input class="quantization_empty_input" data-quant-index="1" type="checkbox"> empty</label>
+                        </div>
+                        <div class="quantization_color_row">
+                            <label for="quantization_color_3">Target 3</label>
+                            <input id="quantization_color_3" class="quantization_color_input" data-quant-index="2" type="color" value="#4dd6a8">
+                            <input class="quantization_hex_input" data-quant-index="2" type="text" value="#4dd6a8" maxlength="7" aria-label="Target 3 hexadecimal value">
+                            <label class="quantization_empty_toggle"><input class="quantization_empty_input" data-quant-index="2" type="checkbox"> empty</label>
+                        </div>
+                        <div class="quantization_color_row">
+                            <label for="quantization_color_4">Target 4</label>
+                            <input id="quantization_color_4" class="quantization_color_input" data-quant-index="3" type="color" value="#5b9dff">
+                            <input class="quantization_hex_input" data-quant-index="3" type="text" value="#5b9dff" maxlength="7" aria-label="Target 4 hexadecimal value">
+                            <label class="quantization_empty_toggle"><input class="quantization_empty_input" data-quant-index="3" type="checkbox"> empty</label>
+                        </div>
+                        <div class="quantization_color_row">
+                            <label for="quantization_color_5">Target 5</label>
+                            <input id="quantization_color_5" class="quantization_color_input" data-quant-index="4" type="color" value="#b983ff">
+                            <input class="quantization_hex_input" data-quant-index="4" type="text" value="#b983ff" maxlength="7" aria-label="Target 5 hexadecimal value">
+                            <label class="quantization_empty_toggle"><input class="quantization_empty_input" data-quant-index="4" type="checkbox"> empty</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="quantization_actions">
+                <button id="quantization_cancel_button" class="secondary_button" type="button">Cancel</button>
+                <button id="quantization_apply_button" class="primary_button" type="button">Apply quantisation</button>
+            </footer>
+        </section>
+    </div>
+
+    <canvas id="source_canvas" width="50" height="50" hidden></canvas>
+
+    <script src="js/levels.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/generation_worker_source.js"></script>
+    <script src="js/canvas_renderer.js"></script>
+    <script src="js/creator.js"></script>
+</body>
+</html>
