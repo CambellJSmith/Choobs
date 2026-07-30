@@ -20,6 +20,8 @@
     (async () => {
         try {
             await load_script("unlimited_quantization_core.js");
+            await load_script("bulk_strict_quantization.js");
+            await globalThis.ChoobsBulkStrictQuantizationReady;
             await load_script("bulk_creator.js");
         } catch (error) {
             console.error("Extended creator tools could not be loaded.", error);
