@@ -11,6 +11,8 @@
     const PIPE_COLORS = Object.freeze([
         "#ff5c7a", "#ffd166", "#4dd6a8", "#5b9dff", "#b983ff"
     ]);
+    const MAX_PALETTE_SIZE = 2500;
+    const EMPTY_COLOR_INDEX = 65535;
 
 
     function normalize_palette(raw_palette) {
@@ -24,7 +26,7 @@
                 palette.push(color.toLowerCase());
             }
 
-            if (palette.length === 5) {
+            if (palette.length >= MAX_PALETTE_SIZE) {
                 break;
             }
         }
@@ -33,7 +35,7 @@
             return Array.from(PIPE_COLORS);
         }
 
-        return palette.slice(0, 5);
+        return palette;
     }
 
     const LENGTH_RANGES = Object.freeze([
@@ -1960,10 +1962,10 @@
             if (pipe.cells.length === 0) continue;
             const chunks = [];
             let cells = [];
-            let color_index = color_map[grid.index(pipe.cells[0].x, pipe.cells[0].y)] % 5;
+            let color_index = Number(color_map[grid.index(pipe.cells[0].x, pipe.cells[0].y)]);
 
             for (const cell of pipe.cells) {
-                const next_color = color_map[grid.index(cell.x, cell.y)] % 5;
+                const next_color = Number(color_map[grid.index(cell.x, cell.y)]);
                 if (cells.length > 0 && next_color !== color_index) {
                     chunks.push({ cells, color_index });
                     cells = [];
@@ -2535,8 +2537,8 @@
             // Prefer a frontier with multiple same-colour inward choices, then use
             // seeded noise to avoid producing a rigid scanline pattern.
             frontiers.sort((left, right) => {
-                const left_color = color_map ? color_map[left.index] % 5 : 0;
-                const right_color = color_map ? color_map[right.index] % 5 : 0;
+                const left_color = color_map ? Number(color_map[left.index]) : 0;
+                const right_color = color_map ? Number(color_map[right.index]) : 0;
                 const score = (frontier, color) => {
                     const x = frontier.index % grid.columns;
                     const y = Math.floor(frontier.index / grid.columns);
@@ -2546,7 +2548,7 @@
                         const ny = y + direction.y;
                         if (!grid.is_inside(nx, ny)) continue;
                         const ni = grid.index(nx, ny);
-                        if (available[ni] && (!color_map || color_map[ni] % 5 === color)) {
+                        if (available[ni] && (!color_map || Number(color_map[ni]) === color)) {
                             neighbours += 1;
                         }
                     }
@@ -2556,7 +2558,7 @@
             });
 
             const frontier = frontiers[0];
-            const pipe_color = color_map ? color_map[frontier.index] % 5 : pipes.length % 5;
+            const pipe_color = color_map ? Number(color_map[frontier.index]) : pipes.length % PIPE_COLORS.length;
             const head_to_tail = [frontier.index];
             const in_path = new Set(head_to_tail);
             const target_length = targets[safe_length_setting] + random.integer(-2, 4);
@@ -2575,7 +2577,7 @@
             if (grid.is_inside(inward_x, inward_y)) {
                 const inward_index = grid.index(inward_x, inward_y);
                 if (available[inward_index] &&
-                    (!color_map || color_map[inward_index] % 5 === pipe_color)) {
+                    (!color_map || Number(color_map[inward_index]) === pipe_color)) {
                     head_to_tail.push(inward_index);
                     in_path.add(inward_index);
                     current = inward_index;
@@ -2598,7 +2600,7 @@
                     if (!grid.is_inside(nx, ny)) continue;
                     const next = grid.index(nx, ny);
                     if (!available[next] || in_path.has(next)) continue;
-                    if (color_map && color_map[next] % 5 !== pipe_color) continue;
+                    if (color_map && Number(color_map[next]) !== pipe_color) continue;
 
                     const same_direction = previous_direction &&
                         previous_direction.x === direction.x &&
@@ -2612,7 +2614,7 @@
                         if (!grid.is_inside(ox, oy)) continue;
                         const oi = grid.index(ox, oy);
                         if (available[oi] && !in_path.has(oi) &&
-                            (!color_map || color_map[oi] % 5 === pipe_color)) {
+                            (!color_map || Number(color_map[oi]) === pipe_color)) {
                             onward += 1;
                         }
                     }
@@ -2991,7 +2993,8 @@
         const columns = Number(options.columns);
         const rows = Number(options.rows);
         const raw_mask = Uint8Array.from(options.mask || []);
-        const raw_color_map = Uint8Array.from(options.color_map || []);
+        const raw_color_map = Uint16Array.from(options.color_map || []);
+        const palette = normalize_palette(options.palette);
         const report_progress =
             typeof options.on_progress === "function" ?
                 options.on_progress :
@@ -3019,8 +3022,10 @@
         }
 
         const color_map = raw_color_map.length === columns * rows ?
-            Uint8Array.from(raw_color_map, (value, index) =>
-                raw_mask[index] ? Math.max(0, Math.min(4, Number(value) || 0)) : 255
+            Uint16Array.from(raw_color_map, (value, index) =>
+                raw_mask[index] ?
+                    Math.max(0, Math.min(palette.length - 1, Number(value) || 0)) :
+                    EMPTY_COLOR_INDEX
             ) : null;
 
         const preserve_exact_mask = Boolean(options.preserve_exact_mask);
@@ -3121,7 +3126,7 @@
                 name: String(options.name || `level_${options.number || 1}`),
                 source_name: String(options.source_name || "custom image"),
                 created_at: new Date().toISOString(),
-                palette: normalize_palette(options.palette),
+                palette,
                 columns,
                 rows,
                 mask: Array.from(grid.valid_cells),
@@ -3150,7 +3155,7 @@
                     covered_cell_count: valid_count,
                     uncovered_cell_count: 0,
                     singleton_pipe_count: carved.singleton_pipe_count,
-                    palette_size: normalize_palette(options.palette).length,
+                    palette_size: palette.length,
                     color_region_preserving: Boolean(color_map),
                     preserve_exact_mask
                 }

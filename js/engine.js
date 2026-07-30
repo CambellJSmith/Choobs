@@ -11,6 +11,8 @@
     const PIPE_COLORS = Object.freeze([
         "#ff5c7a", "#ffd166", "#4dd6a8", "#5b9dff", "#b983ff"
     ]);
+    const MAX_PALETTE_SIZE = 2500;
+    const EMPTY_COLOR_INDEX = 65535;
 
 
     function normalize_palette(raw_palette) {
@@ -24,7 +26,7 @@
                 palette.push(color.toLowerCase());
             }
 
-            if (palette.length === 5) {
+            if (palette.length >= MAX_PALETTE_SIZE) {
                 break;
             }
         }
@@ -33,7 +35,7 @@
             return Array.from(PIPE_COLORS);
         }
 
-        return palette.slice(0, 5);
+        return palette;
     }
 
     const LENGTH_RANGES = Object.freeze([
