@@ -1,1 +1,29 @@
-{"version":2,"number":4,"name":"Queue the Cascade","source_name":"Choobs tutorial","created_at":"2026-07-30T17:45:00.000Z","palette":["#ff5c7a","#ffd166","#4dd6a8","#5b9dff","#b983ff"],"columns":14,"rows":14,"mask":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"pipes":[{"id":0,"color_index":0,"cells":[[1,7],[2,7],[3,7],[4,7]],"direction":[1,0]},{"id":1,"color_index":1,"cells":[[7,8],[7,7],[7,6]],"direction":[0,-1]},{"id":2,"color_index":2,"cells":[[9,8],[10,8],[10,7],[10,6],[10,5],[10,4],[9,4],[9,3],[9,2],[8,2],[8,3],[8,4],[7,4],[6,4],[5,4],[5,5],[5,6],[4,6],[3,6]],"direction":[-1,0]}],"solution_order":[2,1,0],"settings":{"tutorial":true,"tutorial_step":4,"tutorial_total":5,"tutorial_title":"Queue the Cascade","tutorial_description":"You do not have to wait for every animation. Once a blocker is moving, tap the pipe behind it to queue that pull. A queued arrow receives an orange ring.","tutorial_goal":"Tap green, then yellow, then pink in quick succession.","tutorial_hint":"Queued pipes start automatically as soon as their complete movement path is safe.","tutorial_move_duration":90}}
+{
+  "version": 2,
+  "number": 4,
+  "name": "Queue the Cascade",
+  "source_name": "Choobs tutorial",
+  "created_at": "2026-07-30T17:45:00.000Z",
+  "palette": ["#ff5c7a","#ffd166","#4dd6a8","#5b9dff","#b983ff"],
+  "columns": 14,
+  "rows": 14,
+  "mask": [
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1
+  ],
+  "pipes": [{"id":0,"color_index":0,"cells":[[1,7],[2,7],[3,7],[4,7]],"direction":[1,0]},{"id":1,"color_index":1,"cells":[[7,8],[7,7],[7,6]],"direction":[0,-1]},{"id":2,"color_index":2,"cells":[[9,8],[10,8],[10,7],[10,6],[10,5],[10,4],[9,4],[9,3],[9,2],[8,2],[8,3],[8,4],[7,4],[6,4],[5,4],[5,5],[5,6],[4,6],[3,6]],"direction":[-1,0]}],
+  "solution_order": [2,1,0],
+  "settings": {"tutorial":true,"tutorial_step":4,"tutorial_total":5,"tutorial_title":"Queue the Cascade","tutorial_description":"You do not have to wait for every animation. Once a blocker is moving, tap the pipe behind it to queue that pull. A queued arrow receives an orange ring.","tutorial_goal":"Tap green, then yellow, then pink in quick succession.","tutorial_hint":"Queued pipes start automatically as soon as their complete movement path is safe.","tutorial_move_duration":90}
+}
