@@ -34,7 +34,7 @@ jobs:
           ]
 
           old_threshold = 'const DARK_PIPE_OUTLINE_LUMINANCE = 48;'
-          new_threshold = 'const DARK_PIPE_OUTLINE_LUMINANCE = 72;'
+          new_threshold = 'const DARK_PIPE_OUTLINE_LUMINANCE = 73.5;'
           width_pattern = re.compile(
               r'(?P<indent>\s*)const light_outline_width = Math\.min\(\s*'
               r'outer_width,\s*'
@@ -75,11 +75,11 @@ jobs:
 
           for (const path of ['js/canvas_renderer.js', 'creator/js/canvas_renderer.js']) {
             const source = fs.readFileSync(path, 'utf8');
-            assert(source.includes('const DARK_PIPE_OUTLINE_LUMINANCE = 72;'));
+            assert(source.includes('const DARK_PIPE_OUTLINE_LUMINANCE = 73.5;'));
             assert(source.includes('outer_width - Math.max(1, cell_size * 0.04)'));
             assert(source.includes('inner_width + Math.max(1.5, cell_size * 0.1)'));
 
-            const threshold = 72;
+            const threshold = 73.5;
             const luminance = hex => {
               const value = parseInt(hex.slice(1), 16);
               const red = (value >>> 16) & 255;
@@ -89,8 +89,8 @@ jobs:
             };
             assert(luminance('#000000') <= threshold);
             assert(luminance('#303030') <= threshold);
-            assert(luminance('#484848') <= threshold);
-            assert(luminance('#494949') > threshold);
+            assert(luminance('#494949') <= threshold);
+            assert(luminance('#4a4a4a') > threshold);
 
             const cellSize = 12;
             const outerWidth = cellSize * 0.5;
