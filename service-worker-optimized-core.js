@@ -20,6 +20,14 @@ const FINAL_RETRY_CONCURRENCY = positive_integer(
     self.CHOOBS_FINAL_RETRY_CONCURRENCY,
     2
 );
+const SETUP_FAILURE_CIRCUIT = positive_integer(
+    self.CHOOBS_SETUP_FAILURE_CIRCUIT,
+    8
+);
+const FINAL_RETRY_MAX_ASSETS = positive_integer(
+    self.CHOOBS_FINAL_RETRY_MAX_ASSETS,
+    12
+);
 const CACHE_CHECK_BATCH_SIZE = 64;
 const SETUP_RETRY_DELAYS_MS = retry_delays(
     self.CHOOBS_SETUP_RETRY_DELAYS_MS,
@@ -245,17 +253,20 @@ async function cache_assets(
     cache_mode,
     {
         concurrency = SETUP_CONCURRENCY,
-        retry_schedule = SETUP_RETRY_DELAYS_MS
+        retry_schedule = SETUP_RETRY_DELAYS_MS,
+        failure_circuit = SETUP_FAILURE_CIRCUIT
     } = {}
 ) {
     const values = unique_assets(assets);
     let cursor = 0;
     let completed_count = 0;
+    let consecutive_failures = 0;
+    let circuit_open = false;
     const failed_assets = [];
     const worker_count = Math.min(concurrency, values.length);
 
     await Promise.all(Array.from({ length: worker_count }, async () => {
-        while (true) {
+        while (!circuit_open) {
             const index = cursor++;
             if (index >= values.length) {
                 return;
@@ -270,22 +281,34 @@ async function cache_assets(
 
             if (result.ok) {
                 completed_count += 1;
+                consecutive_failures = 0;
             } else {
                 failed_assets.push(result.asset);
+                consecutive_failures += 1;
+
+                if (consecutive_failures >= failure_circuit) {
+                    circuit_open = true;
+                }
             }
         }
     }));
 
+    if (cursor < values.length) {
+        failed_assets.push(...values.slice(cursor));
+    }
+
     return {
         completed_count,
-        failed_assets
+        failed_assets: unique_assets(failed_assets),
+        circuit_open
     };
 }
 
 async function cache_assets_resilient(cache, assets, cache_mode) {
     const initial = await cache_assets(cache, assets, cache_mode);
 
-    if (initial.failed_assets.length === 0) {
+    if (initial.failed_assets.length === 0 ||
+        initial.failed_assets.length > FINAL_RETRY_MAX_ASSETS) {
         return initial;
     }
 
@@ -295,13 +318,15 @@ async function cache_assets_resilient(cache, assets, cache_mode) {
         cache_mode,
         {
             concurrency: FINAL_RETRY_CONCURRENCY,
-            retry_schedule: FINAL_RETRY_DELAYS_MS
+            retry_schedule: FINAL_RETRY_DELAYS_MS,
+            failure_circuit: FINAL_RETRY_MAX_ASSETS
         }
     );
 
     return {
         completed_count: initial.completed_count + final_pass.completed_count,
-        failed_assets: final_pass.failed_assets
+        failed_assets: final_pass.failed_assets,
+        circuit_open: initial.circuit_open || final_pass.circuit_open
     };
 }
 
