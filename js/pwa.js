@@ -19,6 +19,7 @@
 
     (async () => {
         try {
+            await load_script("hud_layout.js");
             await load_script("campaign_manifest.js");
             await load_script("campaign_migrations.js");
             await load_script("tutorial_bootstrap.js");
