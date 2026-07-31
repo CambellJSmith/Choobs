@@ -29,3 +29,7 @@ importScripts(
     "./js/campaign_manifest.js",
     "./service-worker-optimized-core.js"
 );
+
+self.addEventListener("install", (event) => {
+    event.waitUntil(self.skipWaiting());
+});
