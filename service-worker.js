@@ -3,10 +3,14 @@ layout: null
 ---
 "use strict";
 
-importScripts("./service-worker-core.js");
-
-const CAMPAIGN_EXTENSION_ASSETS = [
-    "./service-worker-core.js",
+{% if site.github.build_revision %}
+{% assign build_version = site.github.build_revision %}
+{% else %}
+{% assign build_version = site.time | date: "%Y%m%d%H%M%S" %}
+{% endif %}
+self.CHOOBS_BUILD_VERSION = "{{ build_version }}";
+self.CHOOBS_EXTRA_APP_SHELL = Object.freeze([
+    "./service-worker-optimized-core.js",
     "./js/campaign_manifest.js",
     "./js/campaign_migrations.js",
     "./js/tutorial_bootstrap.js",
@@ -17,30 +21,10 @@ const CAMPAIGN_EXTENSION_ASSETS = [
     "./js/pwa_core.js",
     "./creator/js/unlimited_quantization_core.js",
     "./creator/js/bulk_strict_quantization.js",
-    "./creator/js/bulk_creator.js",
-{% assign sorted_campaign_assets = site.static_files | sort: "path" %}
-{% for file in sorted_campaign_assets %}
-{% if file.path contains "/levels/" %}
-{% if file.extname == ".json" %}
-    ".{{ file.path }}",
-{% endif %}
-{% endif %}
-{% endfor %}
-];
+    "./creator/js/bulk_creator.js"
+]);
 
-async function cache_campaign_extension_assets() {
-    const cache = await caches.open(STATIC_CACHE);
-    await cache_optional_assets(cache, CAMPAIGN_EXTENSION_ASSETS);
-}
-
-self.addEventListener("install", (event) => {
-    event.waitUntil(cache_campaign_extension_assets());
-});
-
-self.addEventListener("message", (event) => {
-    const message = event.data || {};
-
-    if (message.type === "CACHE_ALL_OFFLINE_FILES") {
-        event.waitUntil(cache_campaign_extension_assets());
-    }
-});
+importScripts(
+    "./js/campaign_manifest.js",
+    "./service-worker-optimized-core.js"
+);
