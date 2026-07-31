@@ -30,6 +30,12 @@
         }
 
         try {
+            await load_script("performance_pass.js");
+        } catch (error) {
+            console.error("Performance optimizations could not be loaded.", error);
+        }
+
+        try {
             await load_script("pwa_core.js");
         } catch (error) {
             console.error("PWA support could not be loaded.", error);

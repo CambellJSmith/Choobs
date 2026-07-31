@@ -13,6 +13,7 @@ const CAMPAIGN_EXTENSION_ASSETS = [
     "./js/tutorial.js",
     "./js/campaigns.js",
     "./js/hud_layout.js",
+    "./js/performance_pass.js",
     "./js/pwa_core.js",
     "./creator/js/unlimited_quantization_core.js",
     "./creator/js/bulk_strict_quantization.js",
