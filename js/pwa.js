@@ -30,6 +30,12 @@
         }
 
         try {
+            await load_script("logical_flight_pass.js");
+        } catch (error) {
+            console.error("Logical flight optimizations could not be loaded.", error);
+        }
+
+        try {
             await load_script("performance_pass.js");
         } catch (error) {
             console.error("Performance optimizations could not be loaded.", error);

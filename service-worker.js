@@ -17,6 +17,7 @@ self.CHOOBS_EXTRA_APP_SHELL = Object.freeze([
     "./js/tutorial.js",
     "./js/campaigns.js",
     "./js/hud_layout.js",
+    "./js/logical_flight_pass.js",
     "./js/performance_pass.js",
     "./js/pwa_core.js",
     "./creator/js/unlimited_quantization_core.js",
