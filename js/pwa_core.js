@@ -2,12 +2,16 @@
     "use strict";
 
     const PENDING_RELOAD_KEY = "choobs_pending_automatic_reload";
+    const SYNC_WARNING_THRESHOLD = 3;
+    const SYNC_RETRY_DELAYS_MS = [15000, 60000, 300000, 900000];
     const elements = {
         connection_toast: document.getElementById("pwa_connection_toast"),
         connection_message: document.getElementById("pwa_connection_message")
     };
 
     let connection_timer = 0;
+    let sync_retry_timer = 0;
+    let consecutive_sync_failures = 0;
     let registration_promise = null;
     let automatic_setup_promise = null;
     let pending_sync = false;
@@ -131,10 +135,12 @@
             const channel = new MessageChannel();
             const timeout = window.setTimeout(() => {
                 channel.port1.close();
-                reject(new Error(
+                const error = new Error(
                     "Choobs could not verify its automatic offline update."
-                ));
-            }, 120000);
+                );
+                error.retryable = true;
+                reject(error);
+            }, 300000);
 
             channel.port1.onmessage = (event) => {
                 window.clearTimeout(timeout);
@@ -145,10 +151,12 @@
                     return;
                 }
 
-                reject(new Error(
-                    event.data?.message ||
-                    "Choobs could not prepare its offline files."
-                ));
+                const error = new Error(
+                    "Some offline files are still being retried."
+                );
+                error.retryable = event.data?.retryable !== false;
+                error.failed_count = Number(event.data?.failed_count) || 0;
+                reject(error);
             };
 
             worker.postMessage(message, [channel.port2]);
@@ -260,7 +268,11 @@
 
     async function ensure_service_worker() {
         if (!("serviceWorker" in navigator) || location.protocol === "file:") {
-            throw new Error("This browser cannot enable Choobs offline support.");
+            const error = new Error(
+                "This browser cannot enable Choobs offline support."
+            );
+            error.retryable = false;
+            throw error;
         }
 
         if (!registration_promise) {
@@ -290,6 +302,37 @@
             null;
     }
 
+    function clear_sync_retry() {
+        if (sync_retry_timer) {
+            window.clearTimeout(sync_retry_timer);
+            sync_retry_timer = 0;
+        }
+    }
+
+    function reset_sync_failures() {
+        clear_sync_retry();
+        consecutive_sync_failures = 0;
+    }
+
+    function schedule_sync_retry(error) {
+        pending_sync = true;
+
+        if (!navigator.onLine || error?.retryable === false || sync_retry_timer) {
+            return;
+        }
+
+        const index = Math.min(
+            Math.max(0, consecutive_sync_failures - 1),
+            SYNC_RETRY_DELAYS_MS.length - 1
+        );
+        const retry_delay = SYNC_RETRY_DELAYS_MS[index];
+
+        sync_retry_timer = window.setTimeout(() => {
+            sync_retry_timer = 0;
+            start_automatic_setup();
+        }, retry_delay);
+    }
+
     async function synchronize_worker(worker, announce) {
         if (!worker) {
             throw new Error("Choobs could not start its offline worker.");
@@ -310,6 +353,7 @@
 
         synchronized_workers.add(worker);
         pending_sync = false;
+        reset_sync_failures();
         void request_persistent_storage();
 
         const downloaded_count = Number(result.downloaded_count) || 0;
@@ -379,13 +423,17 @@
 
         automatic_setup_promise = run_automatic_setup(announce)
             .catch((error) => {
-                pending_sync = true;
-                console.warn("Automatic offline setup could not be completed.", error);
+                consecutive_sync_failures += 1;
+                console.warn(
+                    "Automatic offline setup could not be completed.",
+                    error
+                );
+                schedule_sync_retry(error);
 
-                if (navigator.onLine) {
+                if (navigator.onLine &&
+                    consecutive_sync_failures >= SYNC_WARNING_THRESHOLD) {
                     show_connection_message(
-                        error.message ||
-                        "Choobs could not update its offline files automatically"
+                        "Choobs is still finishing its offline update automatically"
                     );
                 }
 
@@ -405,10 +453,12 @@
     }
 
     window.addEventListener("offline", () => {
+        clear_sync_retry();
         show_connection_message("Offline mode — progress still saves");
     });
 
     window.addEventListener("online", () => {
+        clear_sync_retry();
         show_connection_message("Back online — updating offline files");
         start_automatic_setup({ announce: true });
     });
@@ -448,6 +498,7 @@
         }
 
         if (pending_sync) {
+            clear_sync_retry();
             start_automatic_setup({ announce: true });
         } else {
             check_for_update();
