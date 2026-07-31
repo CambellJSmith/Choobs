@@ -1,15 +1,33 @@
----
-layout: null
----
 "use strict";
 
-window.CHOOBS_CAMPAIGN_FILES = Object.freeze([
-{% assign sorted_campaign_files = site.static_files | sort: "path" %}
-{% for file in sorted_campaign_files %}
-{% if file.path contains "/levels/" %}
-{% if file.extname == ".json" %}
-    ".{{ file.path }}",
-{% endif %}
-{% endif %}
-{% endfor %}
-]);
+(() => {
+    const files = [
+        "./levels/level_001.json",
+        "./levels/level_002.json",
+        "./levels/level_003.json",
+        "./levels/level_004.json",
+        "./levels/level_005.json"
+    ];
+    const campaigns = [
+        { folder: "Flags", level_count: 5, file_width: 3 },
+        { folder: "Other", level_count: 6, file_width: 3 },
+        { folder: "Pokemon", level_count: 1025, file_width: 4 },
+        { folder: "Superheroes", level_count: 44, file_width: 3 }
+    ];
+
+    for (const campaign of campaigns) {
+        files.push(`./levels/${campaign.folder}/campaign.json`);
+
+        for (let level_number = 1; level_number <= campaign.level_count; level_number += 1) {
+            const file_number = String(level_number).padStart(
+                campaign.file_width,
+                "0"
+            );
+            files.push(
+                `./levels/${campaign.folder}/level_${file_number}.json`
+            );
+        }
+    }
+
+    globalThis.CHOOBS_CAMPAIGN_FILES = Object.freeze(files);
+})();
