@@ -12,8 +12,31 @@ const LEVEL_METADATA_URL = new URL(
 const NAVIGATION_TIMEOUT_MS = 3500;
 const RESOURCE_TIMEOUT_MS = 2500;
 const SETUP_FETCH_TIMEOUT_MS = 20000;
-const SETUP_CONCURRENCY = 16;
+const SETUP_CONCURRENCY = positive_integer(
+    self.CHOOBS_SETUP_CONCURRENCY,
+    8
+);
+const FINAL_RETRY_CONCURRENCY = positive_integer(
+    self.CHOOBS_FINAL_RETRY_CONCURRENCY,
+    2
+);
+const SETUP_FAILURE_CIRCUIT = positive_integer(
+    self.CHOOBS_SETUP_FAILURE_CIRCUIT,
+    8
+);
+const FINAL_RETRY_MAX_ASSETS = positive_integer(
+    self.CHOOBS_FINAL_RETRY_MAX_ASSETS,
+    12
+);
 const CACHE_CHECK_BATCH_SIZE = 64;
+const SETUP_RETRY_DELAYS_MS = retry_delays(
+    self.CHOOBS_SETUP_RETRY_DELAYS_MS,
+    [300, 1200]
+);
+const FINAL_RETRY_DELAYS_MS = retry_delays(
+    self.CHOOBS_FINAL_RETRY_DELAYS_MS,
+    [2500, 5000]
+);
 
 const BASE_APP_SHELL = [
     "./",
@@ -43,6 +66,23 @@ const BASE_APP_SHELL = [
     "./creator/js/creator.js",
     "./creator/js/unlimited_quantization.js"
 ];
+
+function positive_integer(value, fallback) {
+    const numeric_value = Math.floor(Number(value));
+    return Number.isFinite(numeric_value) && numeric_value > 0 ?
+        numeric_value :
+        fallback;
+}
+
+function retry_delays(value, fallback) {
+    if (!Array.isArray(value)) {
+        return Object.freeze(fallback.slice());
+    }
+
+    return Object.freeze(value
+        .map((delay) => Math.max(0, Number(delay) || 0))
+        .filter(Number.isFinite));
+}
 
 function unique_assets(values) {
     return Array.from(new Set((values || []).map(String).filter(Boolean)));
@@ -107,9 +147,10 @@ self.addEventListener("message", (event) => {
         .catch((error) => {
             port?.postMessage({
                 ok: false,
-                message: error.message || "Offline files could not be cached."
+                retryable: error && error.retryable !== false,
+                failed_count: Number(error && error.failed_count) || 0,
+                message: "Some offline files are still being retried."
             });
-            throw error;
         });
     event.waitUntil(task);
 });
@@ -142,6 +183,14 @@ function request_for(asset) {
     return new Request(new URL(asset, self.registration.scope).href);
 }
 
+function delay(milliseconds) {
+    if (!(milliseconds > 0)) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 async function find_missing(cache, assets) {
     const missing = [];
     for (let index = 0; index < assets.length; index += CACHE_CHECK_BATCH_SIZE) {
@@ -158,42 +207,127 @@ async function find_missing(cache, assets) {
     return missing;
 }
 
-async function cache_assets(cache, assets, cache_mode) {
+async function cache_asset_with_retries(
+    cache,
+    asset,
+    cache_mode,
+    retry_schedule
+) {
+    const request = request_for(asset);
+    let last_error = null;
+
+    for (let attempt = 0; attempt <= retry_schedule.length; attempt += 1) {
+        if (attempt > 0) {
+            await delay(retry_schedule[attempt - 1]);
+        }
+
+        try {
+            const response = await fetch_with_timeout(
+                request,
+                SETUP_FETCH_TIMEOUT_MS,
+                { cache: cache_mode }
+            );
+
+            if (!response || !response.ok) {
+                const status = response ? response.status : 0;
+                throw new Error(`Offline fetch returned ${status || "no response"}.`);
+            }
+
+            await cache.put(request, response);
+            return { ok: true, asset };
+        } catch (error) {
+            last_error = error;
+        }
+    }
+
+    return {
+        ok: false,
+        asset,
+        error: last_error
+    };
+}
+
+async function cache_assets(
+    cache,
+    assets,
+    cache_mode,
+    {
+        concurrency = SETUP_CONCURRENCY,
+        retry_schedule = SETUP_RETRY_DELAYS_MS,
+        failure_circuit = SETUP_FAILURE_CIRCUIT
+    } = {}
+) {
+    const values = unique_assets(assets);
     let cursor = 0;
-    let completed = 0;
-    let first_error = null;
-    const worker_count = Math.min(SETUP_CONCURRENCY, assets.length);
+    let completed_count = 0;
+    let consecutive_failures = 0;
+    let circuit_open = false;
+    const failed_assets = [];
+    const worker_count = Math.min(concurrency, values.length);
 
     await Promise.all(Array.from({ length: worker_count }, async () => {
-        while (!first_error) {
+        while (!circuit_open) {
             const index = cursor++;
-            if (index >= assets.length) {
+            if (index >= values.length) {
                 return;
             }
 
-            const asset = assets[index];
-            try {
-                const request = request_for(asset);
-                const response = await fetch_with_timeout(
-                    request,
-                    SETUP_FETCH_TIMEOUT_MS,
-                    { cache: cache_mode }
-                );
-                if (!response || !response.ok) {
-                    throw new Error(`Could not save ${asset} for offline use.`);
+            const result = await cache_asset_with_retries(
+                cache,
+                values[index],
+                cache_mode,
+                retry_schedule
+            );
+
+            if (result.ok) {
+                completed_count += 1;
+                consecutive_failures = 0;
+            } else {
+                failed_assets.push(result.asset);
+                consecutive_failures += 1;
+
+                if (consecutive_failures >= failure_circuit) {
+                    circuit_open = true;
                 }
-                await cache.put(request, response);
-                completed += 1;
-            } catch (error) {
-                first_error = error;
             }
         }
     }));
 
-    if (first_error) {
-        throw first_error;
+    if (cursor < values.length) {
+        failed_assets.push(...values.slice(cursor));
     }
-    return completed;
+
+    return {
+        completed_count,
+        failed_assets: unique_assets(failed_assets),
+        circuit_open
+    };
+}
+
+async function cache_assets_resilient(cache, assets, cache_mode) {
+    const initial = await cache_assets(cache, assets, cache_mode);
+
+    if (initial.failed_assets.length === 0 ||
+        initial.failed_assets.length > FINAL_RETRY_MAX_ASSETS) {
+        return initial;
+    }
+
+    const final_pass = await cache_assets(
+        cache,
+        initial.failed_assets,
+        cache_mode,
+        {
+            concurrency: FINAL_RETRY_CONCURRENCY,
+            retry_schedule: FINAL_RETRY_DELAYS_MS,
+            failure_circuit: FINAL_RETRY_MAX_ASSETS
+        }
+    );
+
+    return {
+        completed_count: initial.completed_count + final_pass.completed_count,
+        failed_assets: final_pass.failed_assets,
+        circuit_open: initial.circuit_open || final_pass.circuit_open
+    };
 }
 
 async function read_level_metadata(cache) {
@@ -208,10 +342,13 @@ async function read_level_metadata(cache) {
     }
 }
 
-async function write_level_metadata(cache) {
+async function write_level_metadata(cache, pending_assets = []) {
+    const pending = unique_assets(pending_assets);
     await cache.put(LEVEL_METADATA_URL, new Response(JSON.stringify({
         build_version: BUILD_VERSION,
         asset_count: LEVEL_ASSETS.length,
+        complete: pending.length === 0,
+        pending_assets: pending,
         saved_at: Date.now()
     }), {
         headers: { "Content-Type": "application/json" }
@@ -227,11 +364,39 @@ async function remove_obsolete_levels(cache) {
         .map((request) => cache.delete(request)));
 }
 
+function pending_level_assets(metadata, missing_levels) {
+    const current_build = metadata &&
+        metadata.build_version === BUILD_VERSION &&
+        Number(metadata.asset_count) === LEVEL_ASSETS.length;
+
+    if (!current_build) {
+        return LEVEL_ASSETS;
+    }
+
+    if (metadata.complete !== false) {
+        return missing_levels;
+    }
+
+    const pending = Array.isArray(metadata.pending_assets) ?
+        metadata.pending_assets :
+        [];
+    return unique_assets([...pending, ...missing_levels]);
+}
+
+class OfflineSyncError extends Error {
+    constructor(failed_count) {
+        super("Some offline files are still being retried.");
+        this.name = "OfflineSyncError";
+        this.failed_count = failed_count;
+        this.retryable = true;
+    }
+}
+
 async function refresh_all_offline_files() {
     const static_cache = await caches.open(STATIC_CACHE);
     const level_cache = await caches.open(LEVEL_CACHE);
     const missing_shell = await find_missing(static_cache, APP_SHELL);
-    const shell_downloads = await cache_assets(
+    const shell_result = await cache_assets_resilient(
         static_cache,
         missing_shell,
         "reload"
@@ -239,27 +404,33 @@ async function refresh_all_offline_files() {
 
     const metadata = await read_level_metadata(level_cache);
     const missing_levels = await find_missing(level_cache, LEVEL_ASSETS);
-    const current = metadata &&
-        metadata.build_version === BUILD_VERSION &&
-        Number(metadata.asset_count) === LEVEL_ASSETS.length;
-    const levels_to_fetch = current ? missing_levels : LEVEL_ASSETS;
-    const level_downloads = await cache_assets(
+    const levels_to_fetch = pending_level_assets(metadata, missing_levels);
+    const level_result = await cache_assets_resilient(
         level_cache,
         levels_to_fetch,
         "no-cache"
     );
 
     await remove_obsolete_levels(level_cache);
-    await write_level_metadata(level_cache);
+    await write_level_metadata(level_cache, level_result.failed_assets);
 
-    const still_missing = (await find_missing(static_cache, APP_SHELL)).length +
-        (await find_missing(level_cache, LEVEL_ASSETS)).length;
-    if (still_missing > 0) {
-        throw new Error(`${still_missing} offline files are still missing.`);
+    const missing_after_sync = unique_assets([
+        ...(await find_missing(static_cache, APP_SHELL)),
+        ...(await find_missing(level_cache, LEVEL_ASSETS))
+    ]);
+    const failed_assets = unique_assets([
+        ...shell_result.failed_assets,
+        ...level_result.failed_assets,
+        ...missing_after_sync
+    ]);
+
+    if (failed_assets.length > 0) {
+        throw new OfflineSyncError(failed_assets.length);
     }
 
     const asset_count = APP_SHELL.length + LEVEL_ASSETS.length;
-    const downloaded_count = shell_downloads + level_downloads;
+    const downloaded_count =
+        shell_result.completed_count + level_result.completed_count;
     return {
         asset_count,
         downloaded_count,
