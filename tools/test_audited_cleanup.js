@@ -12,7 +12,8 @@ class CacheMock {
     }
 
     key(request) {
-        return new Request(request).url;
+        const value = request instanceof Request ? request.url : String(request);
+        return new URL(value, this.scope).href;
     }
 
     async match(request) {
