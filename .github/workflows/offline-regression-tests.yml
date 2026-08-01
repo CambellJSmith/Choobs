@@ -1,0 +1,54 @@
+name: Offline regression tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "js/campaign_migrations.js"
+      - "js/pwa_core.js"
+      - "service-worker*.js"
+      - "tools/test_*.js"
+      - ".github/workflows/offline-regression-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check js/campaign_migrations.js
+          node --check js/pwa_core.js
+          node --check service-worker-optimized-core.js
+          node --check service-worker-corrections.js
+          node --check tools/test_audited_cleanup.js
+          node --check tools/test_campaign_migrations.js
+          node --check tools/test_pwa_reconnect_sync.js
+
+      - name: Run audited regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/test_audited_cleanup.js
+          node tools/test_campaign_migrations.js
+          node tools/test_pwa_reconnect_sync.js
+
+      - name: Run existing offline regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/test_offline_update.js
+          node tools/test_resilient_offline.js
+          node tools/test_offline_retry_client.js
+          node tools/test_automatic_offline.js
+          node tools/test_offline_completion_popup.js
+          node tools/test_level_revision_sync.js

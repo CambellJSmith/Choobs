@@ -26,7 +26,7 @@
     );
     const watched_registrations = new WeakSet();
     const activation_promises = new WeakMap();
-    const synchronized_workers = new WeakSet();
+    const synchronization_promises = new WeakMap();
 
     remove_manual_controls();
 
@@ -387,43 +387,51 @@
             throw new Error("Choobs could not start its offline worker.");
         }
 
-        if (synchronized_workers.has(worker)) {
-            if (announce || completion_notice_requested) {
-                confirm_update_complete();
-            }
-
-            return null;
-        }
-
         if (!navigator.onLine) {
             pending_sync = true;
             return null;
         }
 
-        const result = await send_worker_message(worker, {
-            type: "CACHE_ALL_OFFLINE_FILES"
-        });
-
-        const downloaded_count = Number(result.downloaded_count) || 0;
-        const recovered_from_failure = consecutive_sync_failures > 0;
-        const should_confirm_completion =
-            announce ||
-            completion_notice_requested ||
-            recovered_from_failure ||
-            downloaded_count > 0;
-
-        synchronized_workers.add(worker);
-        pending_sync = false;
-        reset_sync_failures();
-        void request_persistent_storage();
-
-        if (should_confirm_completion) {
-            confirm_update_complete();
-        } else {
-            completion_notice_requested = false;
+        if (synchronization_promises.has(worker)) {
+            if (announce) {
+                completion_notice_requested = true;
+            }
+            return synchronization_promises.get(worker);
         }
 
-        return result;
+        const synchronization = (async () => {
+            const result = await send_worker_message(worker, {
+                type: "CACHE_ALL_OFFLINE_FILES"
+            });
+
+            const downloaded_count = Number(result.downloaded_count) || 0;
+            const recovered_from_failure = consecutive_sync_failures > 0;
+            const should_confirm_completion =
+                announce ||
+                completion_notice_requested ||
+                recovered_from_failure ||
+                downloaded_count > 0;
+
+            pending_sync = false;
+            reset_sync_failures();
+            void request_persistent_storage();
+
+            if (should_confirm_completion) {
+                confirm_update_complete();
+            } else {
+                completion_notice_requested = false;
+            }
+
+            return result;
+        })();
+
+        synchronization_promises.set(worker, synchronization);
+
+        try {
+            return await synchronization;
+        } finally {
+            synchronization_promises.delete(worker);
+        }
     }
 
     function app_can_reload_safely() {
