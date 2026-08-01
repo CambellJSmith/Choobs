@@ -5,8 +5,6 @@ on:
     paths:
       - "levels/**"
       - "tools/update_manifests.py"
-      - "js/campaign_manifest.js"
-      - "js/level_revision_manifest.js"
       - ".github/workflows/update-level-manifests.yml"
   workflow_dispatch:
 
@@ -19,6 +17,7 @@ concurrency:
 
 jobs:
   update:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
