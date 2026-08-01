@@ -208,6 +208,11 @@ async function main() {
         await run_retry(300000);
         assert.equal(worker.messages.length, 4);
         assert.equal(response_index, 4);
+        assert.equal(
+            message.textContent,
+            "Choobs update complete — all offline files are ready"
+        );
+        assert.equal(toast.classList.values.has("hidden"), false);
     } finally {
         console.warn = original_warn;
     }
