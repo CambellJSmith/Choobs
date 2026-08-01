@@ -10,8 +10,8 @@
         "./levels/level_005.json"
     ];
     const campaigns = [
-        { folder: "Flags", level_count: 5, file_width: 3 },
-        { folder: "Other", level_count: 6, file_width: 3 },
+        { folder: "Flags", level_count: 0, file_width: 3 },
+        { folder: "Other", level_count: 0, file_width: 3 },
         { folder: "Pokemon", level_count: 1025, file_width: 4 },
         { folder: "Superheroes", level_count: 44, file_width: 3 }
     ];
