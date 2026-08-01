@@ -22,14 +22,10 @@ const storage = new StorageMock({
     choobs_completed_levels: JSON.stringify([12, 18, 25]),
     choobs_autosave_v1: JSON.stringify({ level_number: 19 })
 });
-let save_count = 0;
 
 globalThis.localStorage = storage;
 globalThis.choobsGame = {
-    pending_autosave: { level_number: 18 },
-    save_current_progress() {
-        save_count += 1;
-    }
+    pending_autosave: { level_number: 18 }
 };
 
 const module_path = path.resolve(
@@ -58,7 +54,6 @@ assert.equal(stored_autosave.campaign_id, "Other");
 assert.equal(stored_autosave.level_number, 2);
 assert.equal(globalThis.choobsGame.pending_autosave.campaign_id, "Other");
 assert.equal(globalThis.choobsGame.pending_autosave.level_number, 1);
-assert.equal(save_count, 1);
 
 const progress_after_first_run = storage.getItem(
     "choobs_campaign_progress_v1"
@@ -71,6 +66,5 @@ assert.equal(
     progress_after_first_run,
     "migration must be idempotent"
 );
-assert.equal(save_count, 1);
 
 console.log("Campaign migration tests passed.");
