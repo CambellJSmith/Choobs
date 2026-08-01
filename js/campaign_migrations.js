@@ -111,8 +111,8 @@
         }
 
         const application = globalThis.choobsGame;
-        if (application && migrate_autosave(application.pending_autosave)) {
-            application.save_current_progress?.("legacy_campaign_migration");
+        if (application) {
+            migrate_autosave(application.pending_autosave);
         }
     } catch (error) {
         console.warn("Campaign progress could not be migrated.", error);
