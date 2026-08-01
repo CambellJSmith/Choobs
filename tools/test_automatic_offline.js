@@ -176,6 +176,11 @@ async function main() {
     assert.ok(new_worker.messages.includes("SKIP_WAITING"));
     assert.ok(new_worker.messages.includes("CACHE_ALL_OFFLINE_FILES"));
     assert.equal(reload_count, 1);
+    assert.equal(
+        sessionStorage.getItem("choobs_offline_update_complete_notice"),
+        "1",
+        "completion notice must survive the automatic reload"
+    );
 
     const wrapper = fs.readFileSync(
         path.join(root, "service-worker.js"),

@@ -2,6 +2,9 @@
     "use strict";
 
     const PENDING_RELOAD_KEY = "choobs_pending_automatic_reload";
+    const COMPLETE_NOTICE_KEY = "choobs_offline_update_complete_notice";
+    const COMPLETE_NOTICE_MESSAGE =
+        "Choobs update complete — all offline files are ready";
     const SYNC_WARNING_THRESHOLD = 3;
     const SYNC_RETRY_DELAYS_MS = [15000, 60000, 300000, 900000];
     const elements = {
@@ -12,6 +15,7 @@
     let connection_timer = 0;
     let sync_retry_timer = 0;
     let consecutive_sync_failures = 0;
+    let completion_notice_requested = false;
     let registration_promise = null;
     let automatic_setup_promise = null;
     let pending_sync = false;
@@ -56,6 +60,51 @@
         } catch (_error) {
             // Session storage is optional; the in-memory flag remains authoritative.
         }
+    }
+
+    function read_completion_notice_pending() {
+        try {
+            return sessionStorage.getItem(COMPLETE_NOTICE_KEY) === "1";
+        } catch (_error) {
+            return false;
+        }
+    }
+
+    function write_completion_notice_pending(value) {
+        try {
+            if (value) {
+                sessionStorage.setItem(COMPLETE_NOTICE_KEY, "1");
+            } else {
+                sessionStorage.removeItem(COMPLETE_NOTICE_KEY);
+            }
+        } catch (_error) {
+            // Completion messaging is best-effort when storage is unavailable.
+        }
+    }
+
+    function show_stored_completion_notice() {
+        if (!read_completion_notice_pending()) {
+            return false;
+        }
+
+        write_completion_notice_pending(false);
+        show_connection_message(COMPLETE_NOTICE_MESSAGE);
+        return true;
+    }
+
+    function confirm_update_complete() {
+        const defer_until_reload =
+            reload_pending &&
+            (document.visibilityState === "hidden" ||
+                app_can_reload_safely());
+
+        if (defer_until_reload) {
+            write_completion_notice_pending(true);
+        } else {
+            show_connection_message(COMPLETE_NOTICE_MESSAGE);
+        }
+
+        completion_notice_requested = false;
     }
 
     function show_connection_message(message) {
@@ -339,6 +388,10 @@
         }
 
         if (synchronized_workers.has(worker)) {
+            if (announce || completion_notice_requested) {
+                confirm_update_complete();
+            }
+
             return null;
         }
 
@@ -351,19 +404,23 @@
             type: "CACHE_ALL_OFFLINE_FILES"
         });
 
+        const downloaded_count = Number(result.downloaded_count) || 0;
+        const recovered_from_failure = consecutive_sync_failures > 0;
+        const should_confirm_completion =
+            announce ||
+            completion_notice_requested ||
+            recovered_from_failure ||
+            downloaded_count > 0;
+
         synchronized_workers.add(worker);
         pending_sync = false;
         reset_sync_failures();
         void request_persistent_storage();
 
-        const downloaded_count = Number(result.downloaded_count) || 0;
-
-        if (announce && downloaded_count > 0) {
-            show_connection_message(
-                `Choobs updated automatically — ${downloaded_count} file${
-                    downloaded_count === 1 ? "" : "s"
-                } downloaded`
-            );
+        if (should_confirm_completion) {
+            confirm_update_complete();
+        } else {
+            completion_notice_requested = false;
         }
 
         return result;
@@ -417,12 +474,17 @@
     }
 
     function start_automatic_setup({ announce = false } = {}) {
+        if (announce) {
+            completion_notice_requested = true;
+        }
+
         if (automatic_setup_promise) {
             return automatic_setup_promise;
         }
 
         automatic_setup_promise = run_automatic_setup(announce)
             .catch((error) => {
+                completion_notice_requested = true;
                 consecutive_sync_failures += 1;
                 console.warn(
                     "Automatic offline setup could not be completed.",
@@ -476,6 +538,10 @@
         });
     }
 
+    if (!reload_pending) {
+        show_stored_completion_notice();
+    }
+
     if (!navigator.onLine) {
         pending_sync = true;
         window.setTimeout(() => {
@@ -493,9 +559,15 @@
         }
 
         if (reload_pending) {
+            if (!app_can_reload_safely()) {
+                show_stored_completion_notice();
+            }
+
             schedule_safe_reload();
             return;
         }
+
+        show_stored_completion_notice();
 
         if (pending_sync) {
             clear_sync_retry();
