@@ -1,0 +1,51 @@
+name: Update level manifests
+
+on:
+  push:
+    paths:
+      - "levels/**"
+      - "tools/update_manifests.py"
+      - "js/campaign_manifest.js"
+      - "js/level_revision_manifest.js"
+      - ".github/workflows/update-level-manifests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-level-manifests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Generate campaign and revision manifests
+        run: python3 tools/update_manifests.py
+
+      - name: Commit generated manifests
+        shell: bash
+        run: |
+          if git diff --quiet -- \
+              js/campaign_manifest.js \
+              js/level_revision_manifest.js \
+              levels; then
+            echo "Generated manifests are current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+              js/campaign_manifest.js \
+              js/level_revision_manifest.js \
+              levels
+          git commit -m "Update generated level manifests"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

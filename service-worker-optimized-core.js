@@ -88,6 +88,22 @@ function unique_assets(values) {
     return Array.from(new Set((values || []).map(String).filter(Boolean)));
 }
 
+function normalize_revision_map(value) {
+    const revisions = Object.create(null);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return revisions;
+    }
+
+    for (const [asset, revision] of Object.entries(value)) {
+        if (typeof asset !== "string" || !asset ||
+            typeof revision !== "string" || !revision) {
+            continue;
+        }
+        revisions[asset] = revision.toLowerCase();
+    }
+    return revisions;
+}
+
 const APP_SHELL = unique_assets([
     ...BASE_APP_SHELL,
     ...(Array.isArray(self.CHOOBS_EXTRA_APP_SHELL) ?
@@ -98,6 +114,15 @@ const LEVEL_ASSETS = unique_assets(
     Array.isArray(self.CHOOBS_CAMPAIGN_FILES) ?
         self.CHOOBS_CAMPAIGN_FILES :
         []
+);
+const LEVEL_REVISIONS = normalize_revision_map(
+    self.CHOOBS_LEVEL_REVISIONS
+);
+const LEVEL_REVISION_ALGORITHM = String(
+    self.CHOOBS_LEVEL_REVISION_ALGORITHM || "sha256"
+).toLowerCase();
+const LEVEL_MANIFEST_REVISION = String(
+    self.CHOOBS_LEVEL_MANIFEST_REVISION || "legacy"
 );
 const LEVEL_URLS = new Set(
     LEVEL_ASSETS.map((asset) => new URL(asset, self.registration.scope).href)
@@ -183,12 +208,43 @@ function request_for(asset) {
     return new Request(new URL(asset, self.registration.scope).href);
 }
 
+function expected_level_revision(asset) {
+    return LEVEL_REVISIONS[asset] || null;
+}
+
+function fetch_request_for(asset) {
+    const request = request_for(asset);
+    const revision = expected_level_revision(asset);
+    if (!revision) {
+        return request;
+    }
+
+    const url = new URL(request.url);
+    url.searchParams.set("choobs_revision", revision.slice(0, 24));
+    return new Request(url.href);
+}
+
 function delay(milliseconds) {
     if (!(milliseconds > 0)) {
         return Promise.resolve();
     }
 
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function response_sha256(response) {
+    const crypto_api = self.crypto || globalThis.crypto;
+    if (!crypto_api || !crypto_api.subtle ||
+        typeof crypto_api.subtle.digest !== "function") {
+        return null;
+    }
+
+    const bytes = await response.arrayBuffer();
+    const digest = await crypto_api.subtle.digest("SHA-256", bytes);
+    return Array.from(
+        new Uint8Array(digest),
+        (value) => value.toString(16).padStart(2, "0")
+    ).join("");
 }
 
 async function find_missing(cache, assets) {
@@ -213,7 +269,9 @@ async function cache_asset_with_retries(
     cache_mode,
     retry_schedule
 ) {
-    const request = request_for(asset);
+    const cache_request = request_for(asset);
+    const fetch_request = fetch_request_for(asset);
+    const expected_revision = expected_level_revision(asset);
     let last_error = null;
 
     for (let attempt = 0; attempt <= retry_schedule.length; attempt += 1) {
@@ -223,18 +281,32 @@ async function cache_asset_with_retries(
 
         try {
             const response = await fetch_with_timeout(
-                request,
+                fetch_request,
                 SETUP_FETCH_TIMEOUT_MS,
                 { cache: cache_mode }
             );
 
             if (!response || !response.ok) {
                 const status = response ? response.status : 0;
-                throw new Error(`Offline fetch returned ${status || "no response"}.`);
+                throw new Error(
+                    `Offline fetch returned ${status || "no response"}.`
+                );
             }
 
-            await cache.put(request, response);
-            return { ok: true, asset };
+            const actual_revision = await response_sha256(response.clone());
+            if (expected_revision && actual_revision &&
+                actual_revision !== expected_revision) {
+                throw new Error(
+                    "Offline fetch did not match the generated revision."
+                );
+            }
+
+            await cache.put(cache_request, response);
+            return {
+                ok: true,
+                asset,
+                revision: actual_revision || expected_revision || null
+            };
         } catch (error) {
             last_error = error;
         }
@@ -263,6 +335,7 @@ async function cache_assets(
     let consecutive_failures = 0;
     let circuit_open = false;
     const failed_assets = [];
+    const asset_revisions = Object.create(null);
     const worker_count = Math.min(concurrency, values.length);
 
     await Promise.all(Array.from({ length: worker_count }, async () => {
@@ -282,6 +355,9 @@ async function cache_assets(
             if (result.ok) {
                 completed_count += 1;
                 consecutive_failures = 0;
+                if (result.revision) {
+                    asset_revisions[result.asset] = result.revision;
+                }
             } else {
                 failed_assets.push(result.asset);
                 consecutive_failures += 1;
@@ -300,6 +376,7 @@ async function cache_assets(
     return {
         completed_count,
         failed_assets: unique_assets(failed_assets),
+        asset_revisions,
         circuit_open
     };
 }
@@ -324,8 +401,13 @@ async function cache_assets_resilient(cache, assets, cache_mode) {
     );
 
     return {
-        completed_count: initial.completed_count + final_pass.completed_count,
+        completed_count:
+            initial.completed_count + final_pass.completed_count,
         failed_assets: final_pass.failed_assets,
+        asset_revisions: {
+            ...initial.asset_revisions,
+            ...final_pass.asset_revisions
+        },
         circuit_open: initial.circuit_open || final_pass.circuit_open
     };
 }
@@ -342,13 +424,41 @@ async function read_level_metadata(cache) {
     }
 }
 
-async function write_level_metadata(cache, pending_assets = []) {
+function stored_level_revisions(metadata) {
+    return normalize_revision_map(metadata && metadata.asset_revisions);
+}
+
+function current_level_revisions(metadata, downloaded_revisions) {
+    const revisions = stored_level_revisions(metadata);
+    for (const [asset, revision] of Object.entries(downloaded_revisions || {})) {
+        if (LEVEL_URLS.has(request_for(asset).url)) {
+            revisions[asset] = revision;
+        }
+    }
+
+    const expected_assets = new Set(LEVEL_ASSETS);
+    for (const asset of Object.keys(revisions)) {
+        if (!expected_assets.has(asset)) {
+            delete revisions[asset];
+        }
+    }
+    return revisions;
+}
+
+async function write_level_metadata(
+    cache,
+    pending_assets = [],
+    asset_revisions = Object.create(null)
+) {
     const pending = unique_assets(pending_assets);
     await cache.put(LEVEL_METADATA_URL, new Response(JSON.stringify({
         build_version: BUILD_VERSION,
+        manifest_revision: LEVEL_MANIFEST_REVISION,
+        revision_algorithm: LEVEL_REVISION_ALGORITHM,
         asset_count: LEVEL_ASSETS.length,
         complete: pending.length === 0,
         pending_assets: pending,
+        asset_revisions,
         saved_at: Date.now()
     }), {
         headers: { "Content-Type": "application/json" }
@@ -365,22 +475,32 @@ async function remove_obsolete_levels(cache) {
 }
 
 function pending_level_assets(metadata, missing_levels) {
-    const current_build = metadata &&
-        metadata.build_version === BUILD_VERSION &&
+    const pending = Array.isArray(metadata && metadata.pending_assets) ?
+        metadata.pending_assets :
+        [];
+    const missing = new Set(missing_levels);
+    const current_manifest = metadata &&
+        metadata.manifest_revision === LEVEL_MANIFEST_REVISION &&
         Number(metadata.asset_count) === LEVEL_ASSETS.length;
 
-    if (!current_build) {
+    if (current_manifest) {
+        return unique_assets([...pending, ...missing_levels]);
+    }
+
+    const revision_entries = Object.keys(LEVEL_REVISIONS);
+    if (revision_entries.length === 0) {
         return LEVEL_ASSETS;
     }
 
-    if (metadata.complete !== false) {
-        return missing_levels;
-    }
-
-    const pending = Array.isArray(metadata.pending_assets) ?
-        metadata.pending_assets :
-        [];
-    return unique_assets([...pending, ...missing_levels]);
+    const stored_revisions = stored_level_revisions(metadata);
+    const pending_set = new Set(pending);
+    return LEVEL_ASSETS.filter((asset) => {
+        const expected_revision = expected_level_revision(asset);
+        return missing.has(asset) ||
+            pending_set.has(asset) ||
+            !expected_revision ||
+            stored_revisions[asset] !== expected_revision;
+    });
 }
 
 class OfflineSyncError extends Error {
@@ -412,7 +532,15 @@ async function refresh_all_offline_files() {
     );
 
     await remove_obsolete_levels(level_cache);
-    await write_level_metadata(level_cache, level_result.failed_assets);
+    const next_revisions = current_level_revisions(
+        metadata,
+        level_result.asset_revisions
+    );
+    await write_level_metadata(
+        level_cache,
+        level_result.failed_assets,
+        next_revisions
+    );
 
     const missing_after_sync = unique_assets([
         ...(await find_missing(static_cache, APP_SHELL)),

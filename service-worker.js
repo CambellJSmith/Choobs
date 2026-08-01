@@ -12,6 +12,7 @@ self.CHOOBS_BUILD_VERSION = "{{ build_version }}";
 self.CHOOBS_EXTRA_APP_SHELL = Object.freeze([
     "./service-worker-optimized-core.js",
     "./js/campaign_manifest.js",
+    "./js/level_revision_manifest.js",
     "./js/campaign_migrations.js",
     "./js/tutorial_bootstrap.js",
     "./js/tutorial.js",
@@ -27,6 +28,7 @@ self.CHOOBS_EXTRA_APP_SHELL = Object.freeze([
 
 importScripts(
     "./js/campaign_manifest.js",
+    "./js/level_revision_manifest.js",
     "./service-worker-optimized-core.js"
 );
 
