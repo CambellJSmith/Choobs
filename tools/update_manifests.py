@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Synchronize Choobs campaign metadata and the browser campaign manifest."""
+"""Synchronize Choobs campaign metadata and generated browser manifests."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -11,10 +12,13 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 LEVEL_FILE_PATTERN = re.compile(r"^level_(\d+)\.json$", re.IGNORECASE)
 DEFAULT_FILE_WIDTH = 3
+REVISION_ALGORITHM = "sha256"
+CAMPAIGN_MANIFEST_PATH = Path("js/campaign_manifest.js")
+LEVEL_REVISION_MANIFEST_PATH = Path("js/level_revision_manifest.js")
 
 
 class ManifestError(RuntimeError):
@@ -29,12 +33,32 @@ class Campaign:
 
 
 @dataclass(frozen=True)
+class Asset:
+    browser_path: str
+    source_path: Path | None
+    generated_content: str | None = None
+
+    def content_bytes(self) -> bytes:
+        if self.generated_content is not None:
+            return self.generated_content.encode("utf-8")
+        if self.source_path is None:
+            raise ManifestError(f"No source available for {self.browser_path}.")
+        try:
+            return self.source_path.read_bytes()
+        except OSError as error:
+            raise ManifestError(
+                f"Could not read {self.source_path}: {error}"
+            ) from error
+
+
+@dataclass(frozen=True)
 class SyncResult:
     created_files: tuple[Path, ...]
     updated_files: tuple[Path, ...]
     root_level_count: int
     campaign_level_count: int
     campaign_count: int
+    revision_count: int
 
     @property
     def changed(self) -> bool:
@@ -45,7 +69,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Scan levels/, create missing campaign.json files, and synchronize "
-            "js/campaign_manifest.js."
+            "js/campaign_manifest.js plus js/level_revision_manifest.js."
         )
     )
     parser.add_argument(
@@ -131,11 +155,14 @@ def validate_contiguous_campaign(
     expected = list(range(1, numbers[-1] + 1))
     if numbers != expected:
         missing = sorted(set(expected) - set(numbers))
-        missing_names = ", ".join(f"level_{number:03d}.json" for number in missing[:12])
+        missing_names = ", ".join(
+            f"level_{number:03d}.json" for number in missing[:12]
+        )
         if len(missing) > 12:
             missing_names += f", and {len(missing) - 12} more"
         raise ManifestError(
-            f"Campaign {campaign_directory} has numbering gaps. Missing: {missing_names}"
+            f"Campaign {campaign_directory} has numbering gaps. Missing: "
+            f"{missing_names}"
         )
 
     widths = {width for _, width, _ in levels}
@@ -158,15 +185,21 @@ def campaign_metadata_content(folder: str) -> str:
     return json.dumps(metadata, indent=2, ensure_ascii=False) + "\n"
 
 
+def asset_from_path(root: Path, path: Path) -> Asset:
+    relative = path.relative_to(root).as_posix()
+    return Asset(browser_path=f"./{relative}", source_path=path)
+
+
 def discover(
     root: Path,
-) -> tuple[list[str], list[Campaign], dict[Path, str], int]:
+) -> tuple[list[str], list[Campaign], dict[Path, str], int, list[Asset]]:
     levels_root = root / "levels"
     if not levels_root.is_dir():
         raise ManifestError(f"Missing levels directory: {levels_root}")
 
     root_levels = find_level_files(levels_root)
     root_paths = [f"./levels/{path.name}" for _, _, path in root_levels]
+    assets = [asset_from_path(root, path) for _, _, path in root_levels]
 
     campaigns: list[Campaign] = []
     missing_metadata: dict[Path, str] = {}
@@ -201,8 +234,17 @@ def discover(
                         f"{metadata_path} must contain a non-empty string "
                         f'field named "{required_field}".'
                     )
+            assets.append(asset_from_path(root, metadata_path))
         else:
-            missing_metadata[metadata_path] = campaign_metadata_content(folder)
+            generated_metadata = campaign_metadata_content(folder)
+            missing_metadata[metadata_path] = generated_metadata
+            assets.append(
+                Asset(
+                    browser_path=f"./levels/{folder}/campaign.json",
+                    source_path=None,
+                    generated_content=generated_metadata,
+                )
+            )
 
         levels = find_level_files(directory)
         level_count, file_width = validate_contiguous_campaign(directory, levels)
@@ -214,8 +256,10 @@ def discover(
                 file_width=file_width,
             )
         )
+        assets.extend(asset_from_path(root, path) for _, _, path in levels)
 
-    return root_paths, campaigns, missing_metadata, total_campaign_levels
+    assets.sort(key=lambda asset: asset.browser_path.casefold())
+    return root_paths, campaigns, missing_metadata, total_campaign_levels, assets
 
 
 def js_string(value: str) -> str:
@@ -238,10 +282,7 @@ def render_campaign_manifest(
         suffix = "," if index < len(root_level_paths) - 1 else ""
         lines.append(f"        {js_string(path)}{suffix}")
 
-    lines.extend([
-        "    ];",
-        "    const campaigns = [",
-    ])
+    lines.extend(["    ];", "    const campaigns = ["])
 
     for index, campaign in enumerate(campaigns):
         suffix = "," if index < len(campaigns) - 1 else ""
@@ -279,6 +320,56 @@ def render_campaign_manifest(
     return "\n".join(lines)
 
 
+def sha256_hex(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def calculate_revisions(assets: Sequence[Asset]) -> dict[str, str]:
+    revisions: dict[str, str] = {}
+    for asset in assets:
+        if asset.browser_path in revisions:
+            raise ManifestError(f"Duplicate browser asset path: {asset.browser_path}")
+        revisions[asset.browser_path] = sha256_hex(asset.content_bytes())
+    return revisions
+
+
+def revision_manifest_id(revisions: Mapping[str, str]) -> str:
+    canonical = json.dumps(
+        revisions,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return f"{REVISION_ALGORITHM}:{sha256_hex(canonical)}"
+
+
+def render_level_revision_manifest(revisions: Mapping[str, str]) -> str:
+    manifest_id = revision_manifest_id(revisions)
+    lines = [
+        '"use strict";',
+        "",
+        "// Generated by tools/update_manifests.py. Do not edit manually.",
+        "(() => {",
+        "    const revisions = Object.freeze({",
+    ]
+    items = sorted(revisions.items(), key=lambda item: item[0].casefold())
+    for index, (path, revision) in enumerate(items):
+        suffix = "," if index < len(items) - 1 else ""
+        lines.append(f"        {js_string(path)}: {js_string(revision)}{suffix}")
+    lines.extend(
+        [
+            "    });",
+            "",
+            f"    globalThis.CHOOBS_LEVEL_REVISION_ALGORITHM = {js_string(REVISION_ALGORITHM)};",
+            f"    globalThis.CHOOBS_LEVEL_MANIFEST_REVISION = {js_string(manifest_id)};",
+            "    globalThis.CHOOBS_LEVEL_REVISIONS = revisions;",
+            "})();",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def atomic_write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -308,9 +399,13 @@ def file_matches(path: Path, expected: str) -> bool:
 
 def synchronize(root: Path, check: bool = False) -> SyncResult:
     root = root.resolve()
-    root_paths, campaigns, missing_metadata, campaign_level_count = discover(root)
-    manifest_path = root / "js" / "campaign_manifest.js"
-    expected_manifest = render_campaign_manifest(root_paths, campaigns)
+    root_paths, campaigns, missing_metadata, campaign_level_count, assets = discover(root)
+
+    campaign_manifest_path = root / CAMPAIGN_MANIFEST_PATH
+    revision_manifest_path = root / LEVEL_REVISION_MANIFEST_PATH
+    expected_campaign_manifest = render_campaign_manifest(root_paths, campaigns)
+    revisions = calculate_revisions(assets)
+    expected_revision_manifest = render_level_revision_manifest(revisions)
 
     created: list[Path] = []
     updated: list[Path] = []
@@ -320,10 +415,18 @@ def synchronize(root: Path, check: bool = False) -> SyncResult:
         if not check:
             atomic_write(path, content)
 
-    if not file_matches(manifest_path, expected_manifest):
-        updated.append(manifest_path)
-        if not check:
-            atomic_write(manifest_path, expected_manifest)
+    generated_outputs = (
+        (campaign_manifest_path, expected_campaign_manifest),
+        (revision_manifest_path, expected_revision_manifest),
+    )
+    for path, expected in generated_outputs:
+        if not file_matches(path, expected):
+            if path.exists():
+                updated.append(path)
+            else:
+                created.append(path)
+            if not check:
+                atomic_write(path, expected)
 
     return SyncResult(
         created_files=tuple(created),
@@ -331,6 +434,7 @@ def synchronize(root: Path, check: bool = False) -> SyncResult:
         root_level_count=len(root_paths),
         campaign_level_count=campaign_level_count,
         campaign_count=len(campaigns),
+        revision_count=len(revisions),
     )
 
 
@@ -348,8 +452,9 @@ def print_result(result: SyncResult, root: Path, check: bool) -> None:
 
     print(
         f"Found {result.root_level_count} root level(s), "
-        f"{result.campaign_level_count} campaign level(s), and "
-        f"{result.campaign_count} campaign(s)."
+        f"{result.campaign_level_count} campaign level(s), "
+        f"{result.campaign_count} campaign(s), and "
+        f"{result.revision_count} revision(s)."
     )
     if not result.changed:
         print("Manifests are already up to date.")
