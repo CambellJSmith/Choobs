@@ -2,7 +2,8 @@
     "use strict";
 
     const GRID_SIZE = 50;
-    const NEAR_BLACK_CHANNEL_THRESHOLD = 48;
+    const NEAR_BLACK_LUMINANCE_THRESHOLD = 18;
+    const NEAR_BLACK_CHROMA_THRESHOLD = 10;
 
     function wait_for_app() {
         return new Promise((resolve) => {
@@ -42,6 +43,15 @@
         });
     }
 
+    function is_effectively_black(red, green, blue) {
+        const maximum = Math.max(red, green, blue);
+        const minimum = Math.min(red, green, blue);
+        const chroma = maximum - minimum;
+        const luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+        return luminance <= NEAR_BLACK_LUMINANCE_THRESHOLD &&
+            chroma <= NEAR_BLACK_CHROMA_THRESHOLD;
+    }
+
     async function remove_near_black_pixels(file) {
         const image = await decode_image(file);
         const width = image.width || image.naturalWidth;
@@ -56,11 +66,9 @@
         const image_data = context.getImageData(0, 0, width, height);
         const pixels = image_data.data;
         for (let index = 0; index < pixels.length; index += 4) {
-            const is_near_black =
-                pixels[index] <= NEAR_BLACK_CHANNEL_THRESHOLD &&
-                pixels[index + 1] <= NEAR_BLACK_CHANNEL_THRESHOLD &&
-                pixels[index + 2] <= NEAR_BLACK_CHANNEL_THRESHOLD;
-            if (is_near_black) pixels[index + 3] = 0;
+            if (is_effectively_black(pixels[index], pixels[index + 1], pixels[index + 2])) {
+                pixels[index + 3] = 0;
+            }
         }
         context.putImageData(image_data, 0, 0);
 
