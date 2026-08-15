@@ -19,6 +19,7 @@
 
     (async () => {
         try {
+            await load_script("black_to_transparency.js");
             await load_script("unlimited_quantization_core.js");
             await load_script("bulk_strict_quantization.js");
             await globalThis.ChoobsBulkStrictQuantizationReady;
