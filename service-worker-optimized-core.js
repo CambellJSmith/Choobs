@@ -4,7 +4,7 @@ const BUILD_VERSION = String(self.CHOOBS_BUILD_VERSION || "development");
 const CACHE_PREFIX = "choobs-pwa-";
 const STATIC_CACHE = `${CACHE_PREFIX}static-${BUILD_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${BUILD_VERSION}`;
-const LEVEL_CACHE = `${CACHE_PREFIX}levels-v1`;
+const LEVEL_CACHE = `${CACHE_PREFIX}levels-v2-blackless`;
 const LEVEL_METADATA_URL = new URL(
     "./__choobs_level_cache_metadata__",
     self.registration.scope
