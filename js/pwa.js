@@ -25,6 +25,7 @@
             await load_script("tutorial_bootstrap.js");
             await load_script("tutorial.js");
             await load_script("campaigns.js");
+            await load_script("campaign_race_guard.js");
         } catch (error) {
             console.error("Campaign support could not be loaded.", error);
         }
