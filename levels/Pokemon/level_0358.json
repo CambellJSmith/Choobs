@@ -881,7 +881,7 @@
     0,
     0,
     0,
-    1,
+    0,
     1,
     1,
     1,
@@ -1333,7 +1333,7 @@
     0,
     0,
     0,
-    1,
+    0,
     1,
     1,
     1,
@@ -1383,7 +1383,7 @@
     0,
     0,
     0,
-    1,
+    0,
     1,
     1,
     1,
@@ -1533,7 +1533,7 @@
     0,
     0,
     0,
-    1,
+    0,
     1,
     1,
     1,
@@ -1583,7 +1583,7 @@
     0,
     0,
     0,
-    1,
+    0,
     1,
     1,
     1,
@@ -4029,24 +4029,6 @@
       ]
     },
     {
-      "id": 30,
-      "color_index": 4,
-      "cells": [
-        [
-          32,
-          13
-        ],
-        [
-          32,
-          12
-        ]
-      ],
-      "direction": [
-        0,
-        -1
-      ]
-    },
-    {
       "id": 31,
       "color_index": 0,
       "cells": [
@@ -4185,24 +4167,6 @@
       ]
     },
     {
-      "id": 34,
-      "color_index": 4,
-      "cells": [
-        [
-          31,
-          11
-        ],
-        [
-          31,
-          10
-        ]
-      ],
-      "direction": [
-        0,
-        -1
-      ]
-    },
-    {
       "id": 35,
       "color_index": 2,
       "cells": [
@@ -4288,36 +4252,6 @@
       "direction": [
         0,
         -1
-      ]
-    },
-    {
-      "id": 39,
-      "color_index": 4,
-      "cells": [
-        [
-          26,
-          19
-        ],
-        [
-          25,
-          19
-        ],
-        [
-          24,
-          19
-        ],
-        [
-          23,
-          19
-        ],
-        [
-          22,
-          19
-        ]
-      ],
-      "direction": [
-        -1,
-        0
       ]
     },
     {
@@ -4639,28 +4573,6 @@
       ]
     },
     {
-      "id": 51,
-      "color_index": 4,
-      "cells": [
-        [
-          22,
-          49
-        ],
-        [
-          21,
-          49
-        ],
-        [
-          20,
-          49
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
       "id": 52,
       "color_index": 2,
       "cells": [
@@ -4757,20 +4669,6 @@
       ]
     },
     {
-      "id": 58,
-      "color_index": 4,
-      "cells": [
-        [
-          28,
-          1
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
       "id": 59,
       "color_index": 2,
       "cells": [
@@ -4817,68 +4715,12 @@
       ]
     },
     {
-      "id": 62,
-      "color_index": 4,
-      "cells": [
-        [
-          30,
-          9
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
-      "id": 63,
-      "color_index": 4,
-      "cells": [
-        [
-          29,
-          5
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
       "id": 64,
       "color_index": 1,
       "cells": [
         [
           29,
           4
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
-      "id": 65,
-      "color_index": 4,
-      "cells": [
-        [
-          21,
-          5
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
-      "id": 66,
-      "color_index": 4,
-      "cells": [
-        [
-          22,
-          6
         ]
       ],
       "direction": [
@@ -5033,20 +4875,6 @@
       ]
     },
     {
-      "id": 76,
-      "color_index": 4,
-      "cells": [
-        [
-          18,
-          47
-        ]
-      ],
-      "direction": [
-        0,
-        1
-      ]
-    },
-    {
       "id": 77,
       "color_index": 3,
       "cells": [
@@ -5057,38 +4885,6 @@
       ],
       "direction": [
         -1,
-        0
-      ]
-    },
-    {
-      "id": 78,
-      "color_index": 4,
-      "cells": [
-        [
-          18,
-          17
-        ],
-        [
-          17,
-          17
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
-      "id": 79,
-      "color_index": 4,
-      "cells": [
-        [
-          29,
-          2
-        ]
-      ],
-      "direction": [
-        1,
         0
       ]
     },
@@ -5136,20 +4932,6 @@
       "direction": [
         0,
         -1
-      ]
-    },
-    {
-      "id": 83,
-      "color_index": 4,
-      "cells": [
-        [
-          28,
-          6
-        ]
-      ],
-      "direction": [
-        1,
-        0
       ]
     },
     {
@@ -5203,20 +4985,6 @@
       ],
       "direction": [
         1,
-        0
-      ]
-    },
-    {
-      "id": 87,
-      "color_index": 4,
-      "cells": [
-        [
-          27,
-          19
-        ]
-      ],
-      "direction": [
-        -1,
         0
       ]
     },
@@ -5331,42 +5099,6 @@
       ]
     },
     {
-      "id": 95,
-      "color_index": 4,
-      "cells": [
-        [
-          27,
-          49
-        ],
-        [
-          28,
-          49
-        ],
-        [
-          29,
-          49
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
-      "id": 96,
-      "color_index": 4,
-      "cells": [
-        [
-          26,
-          7
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
       "id": 97,
       "color_index": 2,
       "cells": [
@@ -5423,20 +5155,6 @@
         [
           25,
           7
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
-      "id": 101,
-      "color_index": 4,
-      "cells": [
-        [
-          31,
-          16
         ]
       ],
       "direction": [
@@ -5577,38 +5295,6 @@
       ]
     },
     {
-      "id": 110,
-      "color_index": 4,
-      "cells": [
-        [
-          30,
-          19
-        ],
-        [
-          31,
-          19
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
-      "id": 111,
-      "color_index": 4,
-      "cells": [
-        [
-          32,
-          17
-        ]
-      ],
-      "direction": [
-        0,
-        -1
-      ]
-    },
-    {
       "id": 112,
       "color_index": 0,
       "cells": [
@@ -5719,20 +5405,6 @@
       ]
     },
     {
-      "id": 119,
-      "color_index": 4,
-      "cells": [
-        [
-          24,
-          7
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
       "id": 120,
       "color_index": 2,
       "cells": [
@@ -5761,24 +5433,6 @@
       ]
     },
     {
-      "id": 122,
-      "color_index": 4,
-      "cells": [
-        [
-          17,
-          48
-        ],
-        [
-          16,
-          48
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
       "id": 123,
       "color_index": 1,
       "cells": [
@@ -5793,20 +5447,6 @@
       ],
       "direction": [
         1,
-        0
-      ]
-    },
-    {
-      "id": 124,
-      "color_index": 4,
-      "cells": [
-        [
-          19,
-          48
-        ]
-      ],
-      "direction": [
-        -1,
         0
       ]
     },
@@ -5858,38 +5498,27 @@
     }
   ],
   "solution_order": [
-    122,
-    124,
     10,
     126,
     85,
     13,
     20,
     120,
-    119,
-    110,
     117,
     33,
     121,
     106,
-    101,
-    96,
     100,
-    95,
     127,
     8,
     44,
     12,
     17,
     9,
-    83,
     88,
-    79,
     25,
     86,
-    78,
     91,
-    76,
     103,
     90,
     48,
@@ -5897,16 +5526,11 @@
     70,
     77,
     27,
-    66,
     81,
     92,
-    65,
     75,
-    63,
     69,
-    62,
     15,
-    58,
     55,
     54,
     57,
@@ -5917,7 +5541,6 @@
     80,
     114,
     14,
-    51,
     125,
     50,
     72,
@@ -5931,12 +5554,9 @@
     23,
     42,
     73,
-    39,
-    87,
     37,
     93,
     35,
-    34,
     31,
     115,
     74,
@@ -5951,9 +5571,7 @@
     32,
     64,
     60,
-    30,
     38,
-    111,
     109,
     67,
     22,
@@ -5999,16 +5617,17 @@
     "turn_density": 0.6795865633074936,
     "straight_only_pipe_count": 4,
     "reserved_cell_count": 0,
-    "covered_cell_count": 515,
-    "uncovered_cell_count": 0,
+    "covered_cell_count": 480,
+    "uncovered_cell_count": 30,
     "singleton_pipe_count": 50,
-    "palette_size": 5,
+    "palette_size": 4,
     "color_region_preserving": true,
-    "preserve_exact_mask": true
+    "preserve_exact_mask": true,
+    "pipe_count": 106
   },
   "difficulty": {
-    "pipe_count": 128,
-    "segment_count": 515,
+    "pipe_count": 106,
+    "segment_count": 374,
     "initially_open": 34,
     "dependency_depth": 11,
     "average_pipe_length": 4.0234375

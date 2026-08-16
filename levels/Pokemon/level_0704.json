@@ -938,8 +938,8 @@
     1,
     1,
     1,
-    1,
-    1,
+    0,
+    0,
     1,
     1,
     1,
@@ -1239,8 +1239,8 @@
     1,
     1,
     1,
-    1,
-    1,
+    0,
+    0,
     1,
     1,
     1,
@@ -4503,32 +4503,6 @@
       ]
     },
     {
-      "id": 41,
-      "color_index": 4,
-      "cells": [
-        [
-          25,
-          41
-        ],
-        [
-          26,
-          41
-        ],
-        [
-          27,
-          41
-        ],
-        [
-          28,
-          41
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
       "id": 42,
       "color_index": 1,
       "cells": [
@@ -5001,50 +4975,6 @@
       ]
     },
     {
-      "id": 60,
-      "color_index": 4,
-      "cells": [
-        [
-          23,
-          41
-        ],
-        [
-          24,
-          41
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
-      "id": 61,
-      "color_index": 4,
-      "cells": [
-        [
-          19,
-          41
-        ],
-        [
-          20,
-          41
-        ],
-        [
-          21,
-          41
-        ],
-        [
-          22,
-          41
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
-    },
-    {
       "id": 62,
       "color_index": 1,
       "cells": [
@@ -5324,24 +5254,6 @@
       "direction": [
         0,
         -1
-      ]
-    },
-    {
-      "id": 75,
-      "color_index": 4,
-      "cells": [
-        [
-          24,
-          25
-        ],
-        [
-          24,
-          26
-        ]
-      ],
-      "direction": [
-        0,
-        1
       ]
     },
     {
@@ -5713,24 +5625,6 @@
       ]
     },
     {
-      "id": 98,
-      "color_index": 4,
-      "cells": [
-        [
-          18,
-          40
-        ],
-        [
-          17,
-          40
-        ]
-      ],
-      "direction": [
-        -1,
-        0
-      ]
-    },
-    {
       "id": 99,
       "color_index": 1,
       "cells": [
@@ -5903,28 +5797,6 @@
       ],
       "direction": [
         -1,
-        0
-      ]
-    },
-    {
-      "id": 109,
-      "color_index": 4,
-      "cells": [
-        [
-          34,
-          38
-        ],
-        [
-          35,
-          38
-        ],
-        [
-          36,
-          38
-        ]
-      ],
-      "direction": [
-        1,
         0
       ]
     },
@@ -6297,24 +6169,6 @@
       ]
     },
     {
-      "id": 134,
-      "color_index": 4,
-      "cells": [
-        [
-          18,
-          24
-        ],
-        [
-          18,
-          25
-        ]
-      ],
-      "direction": [
-        0,
-        1
-      ]
-    },
-    {
       "id": 135,
       "color_index": 1,
       "cells": [
@@ -6343,28 +6197,6 @@
       ],
       "direction": [
         -1,
-        0
-      ]
-    },
-    {
-      "id": 137,
-      "color_index": 4,
-      "cells": [
-        [
-          29,
-          40
-        ],
-        [
-          30,
-          40
-        ],
-        [
-          31,
-          40
-        ]
-      ],
-      "direction": [
-        1,
         0
       ]
     },
@@ -6471,42 +6303,20 @@
         1,
         0
       ]
-    },
-    {
-      "id": 144,
-      "color_index": 4,
-      "cells": [
-        [
-          32,
-          39
-        ],
-        [
-          33,
-          39
-        ]
-      ],
-      "direction": [
-        1,
-        0
-      ]
     }
   ],
   "solution_order": [
-    144,
     20,
     140,
     65,
     6,
     7,
     8,
-    137,
     128,
     127,
     62,
     36,
     22,
-    109,
-    98,
     138,
     99,
     85,
@@ -6540,9 +6350,6 @@
     49,
     52,
     42,
-    41,
-    60,
-    61,
     14,
     136,
     15,
@@ -6588,7 +6395,6 @@
     18,
     131,
     2,
-    134,
     3,
     64,
     34,
@@ -6604,7 +6410,6 @@
     129,
     87,
     142,
-    75,
     117,
     63,
     116,
@@ -6650,16 +6455,17 @@
     "turn_density": 0.668724279835391,
     "straight_only_pipe_count": 5,
     "reserved_cell_count": 0,
-    "covered_cell_count": 631,
-    "uncovered_cell_count": 0,
+    "covered_cell_count": 607,
+    "uncovered_cell_count": 20,
     "singleton_pipe_count": 41,
-    "palette_size": 5,
+    "palette_size": 4,
     "color_region_preserving": true,
-    "preserve_exact_mask": true
+    "preserve_exact_mask": true,
+    "pipe_count": 136
   },
   "difficulty": {
-    "pipe_count": 145,
-    "segment_count": 631,
+    "pipe_count": 136,
+    "segment_count": 471,
     "initially_open": 26,
     "dependency_depth": 15,
     "average_pipe_length": 4.3517241379310345
